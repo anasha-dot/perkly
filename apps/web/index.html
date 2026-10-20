@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Perkly</title>
+    <script>
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("perkly.locale");
+        } catch (error) {
+          stored = null;
+        }
+        var languages =
+          navigator.languages && navigator.languages.length
+            ? navigator.languages
+            : [navigator.language || "en"];
+        var locale = "en";
+        function primary(tag) {
+          var base = String(tag || "")
+            .toLowerCase()
+            .split("-")[0];
+          return base === "iw" ? "he" : base;
+        }
+        if (stored === "en" || stored === "he" || stored === "ar") {
+          locale = stored;
+        } else {
+          for (var index = 0; index < languages.length; index += 1) {
+            var code = primary(languages[index]);
+            if (code === "en" || code === "he" || code === "ar") {
+              locale = code;
+              break;
+            }
+          }
+        }
+        document.documentElement.lang = locale;
+        document.documentElement.dir = locale === "he" || locale === "ar" ? "rtl" : "ltr";
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

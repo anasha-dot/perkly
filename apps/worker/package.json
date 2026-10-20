@@ -1,0 +1,15 @@
+{
+  "name": "@perkly/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@perkly/integrations": "0.0.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/main.ts",
+    "start": "node src/main.ts",
+    "build": "tsc -p tsconfig.json --pretty false",
+    "typecheck": "tsc -p tsconfig.json --pretty false"
+  }
+}

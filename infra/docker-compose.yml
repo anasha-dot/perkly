@@ -1,0 +1,23 @@
+name: perkly
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: perkly_bootstrap
+      POSTGRES_PASSWORD: perkly_local_bootstrap
+      POSTGRES_DB: postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - perkly_postgres:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U perkly_bootstrap -d postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 40
+      start_period: 5s
+
+volumes:
+  perkly_postgres:

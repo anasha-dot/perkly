@@ -1,0 +1,733 @@
+{
+  "roadmapVersion": "1.0",
+  "projectOrigin": "empty_repository",
+  "updatedAt": "2026-10-20",
+  "releaseState": "local",
+  "nextUnblockedTask": "P02-04",
+  "note": "P02-03 is done. Permission and tenant guards, CSRF, exact Origin, Secure and HttpOnly cookies, and rate limits are enforced. A cross-user or cross-business id fails. A customer-pool session fails on the admin route even with an admin grant. Admin assurance requires the admin pool and a separate grant. That is not a hosted Cognito deployment and it is not admin MFA. D-22 still holds: Perkly does not charge a merchant product sale. No checkout and no PayPlus client were added. Membership billing is not in this build. Phase 05 merchant-sale tasks stay deferred_by_owner. P06-02 stays blocked_external on the membership-only E01. O-03 stays open. The next unblocked task is P02-04.",
+  "tasks": [
+    {
+      "id": "P00-01",
+      "status": "done",
+      "dependsOn": [],
+      "owner": "bot",
+      "evidence": [
+        "docs/PRODUCT_SPEC.md",
+        "docs/DECISIONS.md"
+      ],
+      "blocker": null,
+      "nextAction": "None. Product rules and open choices are recorded."
+    },
+    {
+      "id": "P00-02",
+      "status": "done",
+      "dependsOn": [
+        "P00-01"
+      ],
+      "owner": "both",
+      "evidence": [
+        "docs/PAYMENT_CONTRACT.md is a membership checklist under D-22. PayPlus is not the merchant acquirer. E01 is not done."
+      ],
+      "blocker": null,
+      "nextAction": "Anas sends the membership-only E01 questions in docs/OWNER_SETUP.md. Do not ask PayPlus to settle a merchant sale."
+    },
+    {
+      "id": "P00-03",
+      "status": "done",
+      "dependsOn": [
+        "P00-01"
+      ],
+      "owner": "bot",
+      "evidence": [
+        "docs/ARCHITECTURE.md",
+        "docs/API.md is a proposed /api/v1 contract. No route is implemented."
+      ],
+      "blocker": null,
+      "nextAction": "None. Update API.md from implemented schemas when routes exist."
+    },
+    {
+      "id": "P00-04",
+      "status": "done",
+      "dependsOn": [
+        "P00-03"
+      ],
+      "owner": "bot",
+      "evidence": [
+        "docs/TASK_STATUS.json",
+        "docs/IMPLEMENTATION_LOG.md",
+        "docs/OWNER_SETUP.md",
+        "docs/RELEASE_GATES.md",
+        "docs/TEST_STRATEGY.md",
+        "docs/project-context.md"
+      ],
+      "blocker": null,
+      "nextAction": "None. P01-01 is done. The next task is P01-02."
+    },
+    {
+      "id": "P01-01",
+      "status": "done",
+      "dependsOn": [
+        "P00-03",
+        "P00-04"
+      ],
+      "owner": "bot",
+      "evidence": [
+        "apps/web, apps/api, apps/worker, packages/domain, packages/contracts, packages/database, packages/integrations, packages/search, infra/, scripts/, tests/, docs/.",
+        "npm run check and npm run build passed on Node.js 24.22.0. npm run dev served the shell. GET /api/v1 returned database not_connected.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-01."
+      ],
+      "blocker": null,
+      "nextAction": "None. The local shell runs."
+    },
+    {
+      "id": "P01-02",
+      "status": "done",
+      "dependsOn": [
+        "P01-01"
+      ],
+      "owner": "bot",
+      "evidence": [
+        "infra/docker-compose.yml uses image postgres:17. A fresh perkly_test database migrated 0001_foundation, and a second run applied nothing.",
+        "Reset and test commands refused a hosted URL, APP_MODE=production, and the dev database perkly. npm run test:integration passed on the disposable database.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-02. O-03 stays open."
+      ],
+      "blocker": null,
+      "nextAction": "None. The disposable database migrates."
+    },
+    {
+      "id": "P01-03",
+      "status": "done",
+      "dependsOn": [
+        "P01-02"
+      ],
+      "owner": "bot",
+      "evidence": [
+        "Local startup selects local-fixtures, outbox, and fixtures with payment disabled. No AWS credentials are required.",
+        "Hosted startup rejects demo identity, the outbox, fixture search, and simulator payments. Seed wrote 5 profiles, 1 outbox row, and 3 search fixtures on loopback perkly, and a second run did not duplicate them.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-03."
+      ],
+      "blocker": null,
+      "nextAction": "None."
+    },
+    {
+      "id": "P01-04",
+      "status": "done",
+      "dependsOn": [
+        "P01-03"
+      ],
+      "owner": "bot",
+      "evidence": [
+        ".github/workflows/ci.yml runs check, build, the native Postgres smoke, the browser smoke, and the non-root image.",
+        "npm run test:smoke:database, npm run test:e2e, npm run build, and sh scripts/check-container.sh passed. The container user was uid 1000. GitHub Actions run 39412383692 passed the same four jobs.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-04. package-lock.json is committed."
+      ],
+      "blocker": null,
+      "nextAction": "None. The next unblocked task is P01-05."
+    },
+    {
+      "id": "P01-05",
+      "status": "done",
+      "dependsOn": [
+        "P01-02"
+      ],
+      "owner": "bot",
+      "evidence": [
+        "GET /api/v1/health and GET /api/v1/ready return status without a database URL or password. Unknown paths return code, requestId, and fieldErrors.",
+        "Migration 0003_audit_events. Runtime insert succeeded. Runtime and migration UPDATE, DELETE, TRUNCATE, and ALTER returned SQLSTATE 42501. The original action remained foundation.ready.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-05."
+      ],
+      "blocker": null,
+      "nextAction": "None."
+    },
+    {
+      "id": "P02-01",
+      "status": "done",
+      "dependsOn": [
+        "P01-03",
+        "P01-05"
+      ],
+      "owner": "bot",
+      "evidence": [
+        "POST /api/v1/auth/local/session on loopback opened a customer session for fixture-customer-nour and a cashier session for fixture-cashier-omar.",
+        "app.sessions stores token_hash. The hash was not equal to the raw cookie. Hosted mode returns local_identity_unavailable.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P02-01."
+      ],
+      "blocker": null,
+      "nextAction": "None. The next unblocked task is P02-02."
+    },
+    {
+      "id": "P02-02",
+      "status": "done",
+      "dependsOn": [
+        "P02-01"
+      ],
+      "owner": "bot",
+      "evidence": [
+        "GET /api/v1/auth/login and GET /api/v1/auth/callback use authorization-code with PKCE. State, nonce, and the verifier hash are stored. The verifier is cleared when the callback consumes the flow.",
+        "Customer and admin pool settings are separate. A customer-issuer token on an admin callback returns issuer_mismatch. Refresh and logout were exercised. Logout still returns 204 when provider revoke fails.",
+        "The loopback fixture route returns local_identity_unavailable when identity is Cognito. Hosted startup does not contact the issuers. This is not a hosted Cognito deployment.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P02-02."
+      ],
+      "blocker": null,
+      "nextAction": "None. The next unblocked task is P02-03."
+    },
+    {
+      "id": "P02-03",
+      "status": "done",
+      "dependsOn": [
+        "P02-02"
+      ],
+      "owner": "bot",
+      "evidence": [
+        "GET /api/v1/users/:userId returns 404 for another user and omits that user's email. Staff membership is read per business. A cashier of the north fixture cannot read or invite for the south fixture.",
+        "POST mutations require the exact APP_ORIGIN and the session CSRF token. Session cookies are HttpOnly and SameSite=Lax, and Secure when the origin is https. Auth is limited to 180 requests a minute per client address, and access routes to 60.",
+        "GET /api/v1/admin/assurance returns 403 for a customer-pool session, including one with an admin_grants row. It returns assured only for an admin-pool session that also has that grant. The runtime role cannot insert grants.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P02-03."
+      ],
+      "blocker": null,
+      "nextAction": "None. The next unblocked task is P02-04."
+    },
+    {
+      "id": "P02-04",
+      "status": "not_started",
+      "dependsOn": [
+        "P02-03"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Build account, locale, and session-expiry flows. An expired session must not submit a purchase as someone else."
+    },
+    {
+      "id": "P03-01",
+      "status": "not_started",
+      "dependsOn": [
+        "P02-03"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Add merchant application, versioned consent, branches, staff invites, and a provider-onboarding status distinct from app approval."
+    },
+    {
+      "id": "P03-02",
+      "status": "not_started",
+      "dependsOn": [
+        "P03-01"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Add products, services, surplus, prices, terms, and validated images. Private records must not enter public media storage."
+    },
+    {
+      "id": "P03-03",
+      "status": "not_started",
+      "dependsOn": [
+        "P03-02"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Add allocated stock, versions, movement history, and atomic CSV import. Imports must not clear reserved units."
+    },
+    {
+      "id": "P03-04",
+      "status": "not_started",
+      "dependsOn": [
+        "P03-03"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Add offer approval, scheduling, and pickup windows. Enforce the 3% floor. Do not treat 90% as a settled maximum."
+    },
+    {
+      "id": "P03-05",
+      "status": "not_started",
+      "dependsOn": [
+        "P03-04"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Add catalogue, filters, branch pages, offer detail, and favourites with real stock and free or member price previews."
+    },
+    {
+      "id": "P04-01",
+      "status": "not_started",
+      "dependsOn": [
+        "P00-01",
+        "P01-01"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Implement the discount arithmetic and the published shekel examples. Do not treat the result as an amount Perkly charges the merchant."
+    },
+    {
+      "id": "P04-02",
+      "status": "not_started",
+      "dependsOn": [
+        "P04-01",
+        "P03-04"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Do not reserve stock for a PayPlus product capture. Whether a discount code reserves stock is O-15. Do not start a merchant payment."
+    },
+    {
+      "id": "P04-03",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P04-02"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Do not build a cashier bill that Perkly charges. There is no merchant PayPlus terminal."
+    },
+    {
+      "id": "P04-04",
+      "status": "not_started",
+      "dependsOn": [
+        "P04-02",
+        "P01-05"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Idempotency and the outbox remain for later membership work. Do not use them to charge a merchant sale."
+    },
+    {
+      "id": "P04-05",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P04-03",
+        "P04-04",
+        "P03-05"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Do not build merchant checkout or payment initiation. A code activates the discount. Code mechanics are O-15 and are not decided."
+    },
+    {
+      "id": "P05-01",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P04-04"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Not the launch path. Do not build a merchant-sale payment simulator or a PayPlus charge for a product sale."
+    },
+    {
+      "id": "P05-02",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P05-01",
+        "P04-05"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Not the launch path. Do not complete a local purchase that captures a merchant sale."
+    },
+    {
+      "id": "P05-03",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P05-01",
+        "P00-02",
+        "E01",
+        "E02"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Not the launch path. Do not implement PayPlus, or any provider, for a merchant product sale. Membership billing is P06-02."
+    },
+    {
+      "id": "P05-04",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P05-03"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Not the launch path. Do not add merchant-sale webhooks or late capture of a product payment."
+    },
+    {
+      "id": "P05-05",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P05-04",
+        "P05-02"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Not the launch path. Do not run a merchant-sale sandbox. There is no merchant PayPlus terminal."
+    },
+    {
+      "id": "P06-01",
+      "status": "not_started",
+      "dependsOn": [
+        "P04-01",
+        "P02-04"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Add membership consent, agreement, and paid-period models plus a local simulator. Pending checkout grants no paid access. Do not call PayPlus and do not charge a merchant sale."
+    },
+    {
+      "id": "P06-02",
+      "status": "blocked_external",
+      "dependsOn": [
+        "P06-01",
+        "E01"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": "E01 is not complete. It is only about Perkly's membership account: fees on that deposit, recurring charge day, idempotency, PAN-free membership refunds, sandbox host, Invoice+ on Perkly's legal name for the ₪15, and a chargeback export.",
+      "nextAction": "Wait for the membership-only E01 answers. Then implement the ₪15 charge on Perkly's own PayPlus terminal. Do not implement a merchant sale. Roadmap dependency P05-03 is deferred_by_owner and is not the launch path."
+    },
+    {
+      "id": "P06-03",
+      "status": "not_started",
+      "dependsOn": [
+        "P06-02"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Membership cancellation and fee refunds only, after P06-02. A fee refund is not a merchant product refund. Roadmap dependency P05-04 is deferred_by_owner."
+    },
+    {
+      "id": "P06-04",
+      "status": "not_started",
+      "dependsOn": [
+        "P06-03"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Show membership status, cancellation, and separate savings figures. Do not apply eligibility by charging the merchant through PayPlus. Discount-code mechanics are O-15."
+    },
+    {
+      "id": "P07-01",
+      "status": "not_started",
+      "dependsOn": ["P05-02"],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Do not start pickup from a Perkly capture of a merchant sale. How a discount code relates to ready or pickup is O-15 and is not decided."
+    },
+    {
+      "id": "P07-02",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P07-01",
+        "P05-03"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Do not refund a merchant product sale through Perkly or PayPlus."
+    },
+    {
+      "id": "P07-03",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P07-02",
+        "P06-03",
+        "P05-04"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Do not import merchant-sale refunds, disputes, or chargebacks as Perkly money movement. Membership chargebacks wait on E01 and are not this task."
+    },
+    {
+      "id": "P07-04",
+      "status": "deferred_by_owner",
+      "dependsOn": [
+        "P07-03"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": "D-22. Anas removed merchant product payments from Perkly. This task is not the launch path.",
+      "nextAction": "Do not import merchant-sale settlements. Perkly does not settle the payment between the customer and the merchant."
+    },
+    {
+      "id": "P07-05",
+      "status": "not_started",
+      "dependsOn": [
+        "P06-03",
+        "E05"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Membership tax document only, after E05 and E01: Invoice+ on Perkly's legal name for ₪15. Do not issue a Perkly document for a merchant product sale. Roadmap dependency P07-02 is deferred_by_owner."
+    },
+    {
+      "id": "P07-06",
+      "status": "not_started",
+      "dependsOn": [
+        "P07-04",
+        "P07-05",
+        "P07-01"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Finish support, membership reconciliation consoles, and verified reviews. Do not add merchant-sale settlement or a manual mark-paid control."
+    },
+    {
+      "id": "P08-01",
+      "status": "not_started",
+      "dependsOn": [
+        "P03-01"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Add branch facts with provenance, freshness, and verification. A merchant cannot label its own text as independently Perkly-verified."
+    },
+    {
+      "id": "P08-02",
+      "status": "not_started",
+      "dependsOn": [
+        "P08-01",
+        "P03-05"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Add typed intent, hard filters, clarification, and labelled straight-line distance. Ordinary search must work with no model."
+    },
+    {
+      "id": "P08-03",
+      "status": "not_started",
+      "dependsOn": [
+        "P08-02",
+        "E07"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "After E07, add the approved Bedrock structured-output adapter. Do not guess a model ID."
+    },
+    {
+      "id": "P08-04",
+      "status": "not_started",
+      "dependsOn": [
+        "P08-03"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Evaluate English, Hebrew, and Arabic on the real model, including failure and stale facts. Record actual cost. A synthetic reply is not evidence."
+    },
+    {
+      "id": "P09-01",
+      "status": "not_started",
+      "dependsOn": [
+        "P07-06",
+        "P06-04",
+        "P08-02",
+        "E06"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Finish launch strings, RTL, and PWA behavior. Offline UI must not show a usable paid confirmation. Native review is E06."
+    },
+    {
+      "id": "P09-02",
+      "status": "not_started",
+      "dependsOn": [
+        "P07-06",
+        "P06-03",
+        "P02-04"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Implement export and resumable deletion. Retain financial rows only for an approved reason. Cancel recurring billing before closure completes."
+    },
+    {
+      "id": "P09-03",
+      "status": "not_started",
+      "dependsOn": [
+        "P07-06",
+        "E04"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "After E04, add templates, SES, bounces, and suppression. A duplicate email must not duplicate a money movement."
+    },
+    {
+      "id": "P09-04",
+      "status": "not_started",
+      "dependsOn": [
+        "P02-03",
+        "P07-04"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Harden secrets, versioned encryption, redaction, uploads, and rotation. Document incident and rotation steps from the tests."
+    },
+    {
+      "id": "P09-05",
+      "status": "not_started",
+      "dependsOn": [
+        "P09-01",
+        "P09-02",
+        "P09-03",
+        "P09-04",
+        "P07-05",
+        "E05",
+        "E06"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Match published policy and translation to the code. No placeholder legal text in a purchase flow."
+    },
+    {
+      "id": "P10-01",
+      "status": "not_started",
+      "dependsOn": [
+        "P00-03",
+        "P01-04",
+        "E03"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "After E03, write CDK for staging and production. Verify region and cost first. Do not start billable services as part of an unapproved draft."
+    },
+    {
+      "id": "P10-02",
+      "status": "not_started",
+      "dependsOn": [
+        "P10-01",
+        "P01-04",
+        "E09"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Add protected release CI, image scanning, immutable digests, and OIDC deploy roles. Do not use static AWS keys."
+    },
+    {
+      "id": "P10-03",
+      "status": "not_started",
+      "dependsOn": [
+        "P10-02",
+        "P02-02",
+        "P09-03"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Deploy an authorized staging foundation with payments disabled. Verify HTTPS, Cognito, admin MFA, and runtime grants."
+    },
+    {
+      "id": "P10-04",
+      "status": "not_started",
+      "dependsOn": [
+        "P10-03",
+        "P05-05",
+        "P06-04",
+        "P07-06",
+        "P08-04"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "A later hosted check is membership-only. Do not exercise a merchant-sale sandbox. Keep demo merchant-charge routes unavailable."
+    },
+    {
+      "id": "P10-05",
+      "status": "not_started",
+      "dependsOn": [
+        "P10-04",
+        "P09-04",
+        "E08"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Connect real alarm recipients and rehearse outage, bad release, restore, and key recovery. Record actual RPO and RTO."
+    },
+    {
+      "id": "P11-01",
+      "status": "not_started",
+      "dependsOn": [
+        "P10-04",
+        "P09-05"
+      ],
+      "owner": "bot",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Run financial, security, and concurrency acceptance on native PostgreSQL, then load tests. Record AT01–AT33. Leave AT34 for the live pilot."
+    },
+    {
+      "id": "P11-02",
+      "status": "not_started",
+      "dependsOn": [
+        "P11-01",
+        "P10-05",
+        "E08"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Complete independent security review and physical device acceptance. Record digest, migrations, known issues, and rollback ownership."
+    },
+    {
+      "id": "P11-03",
+      "status": "not_started",
+      "dependsOn": [
+        "P11-02",
+        "E02"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Do not run a live merchant-sale charge through Perkly. A live ₪15 membership test needs a later written authorization. No public acquisition."
+    },
+    {
+      "id": "P11-04",
+      "status": "not_started",
+      "dependsOn": [
+        "P11-03"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Run the invited-adult pilot, reconcile daily, and observe one full eligible renewal cycle plus the recovery window."
+    },
+    {
+      "id": "P11-05",
+      "status": "not_started",
+      "dependsOn": [
+        "P11-04"
+      ],
+      "owner": "both",
+      "evidence": [],
+      "blocker": null,
+      "nextAction": "Review savings, fulfilment, and real operating cost. Decide launch, iterate, or hold. Do not call the project complete because pages load."
+    }
+  ]
+}

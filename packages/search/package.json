@@ -1,0 +1,16 @@
+{
+  "name": "@perkly/search",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@perkly/contracts": "0.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --pretty false",
+    "typecheck": "tsc -p tsconfig.json --pretty false"
+  }
+}
