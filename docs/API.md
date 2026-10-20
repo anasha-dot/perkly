@@ -48,8 +48,9 @@ Proposed status mapping, to be confirmed when handlers exist: `400` validation, 
 
 | Method and path | Proposal status | Contract |
 | --- | --- | --- |
-| `GET /api/v1/session` | Named in the roadmap | Returns the current identity, capabilities, and CSRF token. No provider secret. |
-| `POST /api/v1/auth/logout` | Named in the roadmap | Ends the server session. |
+| `GET /api/v1/session` | Implemented for the local adapter | Returns the current fictional user, role capability, and CSRF token. No session secret and no provider secret. Missing or expired cookies return 401 `no_session`. |
+| `POST /api/v1/auth/local/session` | Local only | Body `{ "profileId" }` must be one fictional fixture profile. Loopback local mode only. Sets an HttpOnly `perkly_session` cookie. The raw token is not stored and is not in the JSON body. Hosted mode returns 404 `local_identity_unavailable`. |
+| `POST /api/v1/auth/logout` | Implemented for the local adapter | Revokes the server session and clears the cookie. |
 | Hosted login and callback | Required by the roadmap; path strings not fixed there | Application routes that start the identity provider and receive the callback. Proposed names: `GET /api/v1/auth/login` and `GET /api/v1/auth/callback`. They are Perkly routes, not a vendor API. PKCE, state, and nonce are server-side. |
 
 `GET /api/v1/session` response shape, proposed:

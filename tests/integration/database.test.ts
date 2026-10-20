@@ -1,15 +1,20 @@
 import assert from "node:assert/strict";
+import { once } from "node:events";
 import test from "node:test";
+import { createApp } from "../../apps/api/src/app.ts";
 import {
   assertSafeDatabaseTarget,
   createPool,
   databaseUrlFromEnv,
+  hashSessionToken,
   localRoleUrl,
   migrate,
   resetTestDatabase,
   seedLocal,
   withTransaction,
 } from "@perkly/database";
+import { loadConfig } from "@perkly/integrations";
+import type pg from "pg";
 
 test(
   "a fresh disposable database migrates twice the same way, and the runtime role cannot change schema",
@@ -25,6 +30,7 @@ test(
       "0001_foundation",
       "0002_local_fixtures",
       "0003_audit_events",
+      "0004_users_sessions",
     ]);
     assert.match(first.serverVersion, /PostgreSQL 17\./);
     const firstSnapshot = await readSnapshot(target);
@@ -35,6 +41,7 @@ test(
       "0001_foundation",
       "0002_local_fixtures",
       "0003_audit_events",
+      "0004_users_sessions",
     ]);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
 
@@ -44,6 +51,7 @@ test(
       "0001_foundation",
       "0002_local_fixtures",
       "0003_audit_events",
+      "0004_users_sessions",
     ]);
     assert.equal(third.serverVersion, first.serverVersion);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
@@ -170,12 +178,85 @@ test(
         ),
         "42501",
       );
+
+      await demonstrateLocalSessions(runtimePool);
     } finally {
       await runtimePool.end();
       await migratePool.end();
     }
   },
 );
+
+async function demonstrateLocalSessions(pool: pg.Pool): Promise<void> {
+  const config = loadConfig({
+    APP_MODE: "local",
+    HOST: "127.0.0.1",
+    APP_ORIGIN: "http://127.0.0.1:5173",
+  });
+  const server = createApp(config, { pool }).listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address();
+  const port = typeof address === "object" && address !== null ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    const customer = await openSession(base, "fixture-customer-nour");
+    assert.equal(customer.role, "customer");
+    assert.equal(customer.fictional, true);
+    const staff = await openSession(base, "fixture-cashier-omar");
+    assert.equal(staff.role, "cashier");
+    assert.equal(staff.fictional, true);
+    assert.notEqual(staff.token, customer.token);
+
+    const stored = await pool.query<{ token_hash: string }>(
+      "SELECT token_hash FROM app.sessions WHERE user_id = $1",
+      [staff.userId],
+    );
+    assert.equal(stored.rows[0]?.token_hash, hashSessionToken(staff.token));
+    assert.notEqual(stored.rows[0]?.token_hash, staff.token);
+
+    const logout = await fetch(`${base}/api/v1/auth/logout`, {
+      method: "POST",
+      headers: { cookie: `perkly_session=${staff.token}` },
+    });
+    assert.equal(logout.status, 204);
+    const afterLogout = await fetch(`${base}/api/v1/session`, {
+      headers: { cookie: `perkly_session=${staff.token}` },
+    });
+    assert.equal(afterLogout.status, 401);
+  } finally {
+    server.close();
+  }
+}
+
+async function openSession(
+  base: string,
+  profileId: string,
+): Promise<{ token: string; role: string; fictional: boolean; userId: string }> {
+  const response = await fetch(`${base}/api/v1/auth/local/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ profileId }),
+  });
+  assert.equal(response.status, 201);
+  const setCookie = response.headers.get("set-cookie") ?? "";
+  assert.match(setCookie, /HttpOnly/i);
+  assert.doesNotMatch(setCookie, /Secure/i);
+  const token = /perkly_session=([^;]+)/.exec(setCookie)?.[1];
+  assert.ok(token);
+  const body = (await response.json()) as {
+    user: { id: string; role: string; fictional: boolean };
+    csrfToken: string;
+  };
+  assert.equal(body.user.fictional, true);
+  assert.notEqual(body.csrfToken, token);
+  const session = await fetch(`${base}/api/v1/session`, {
+    headers: { cookie: `perkly_session=${token}` },
+  });
+  assert.equal(session.status, 200);
+  const current = (await session.json()) as { user: { role: string; fictional: boolean } };
+  assert.equal(current.user.role, body.user.role);
+  return { token, role: body.user.role, fictional: body.user.fictional, userId: body.user.id };
+}
 
 async function readSnapshot(target: ReturnType<typeof assertSafeDatabaseTarget>): Promise<{
   tables: string[];

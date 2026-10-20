@@ -8,6 +8,8 @@ import {
 import { pingRuntimeDatabase } from "@perkly/database";
 import { randomBytes } from "node:crypto";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
+import type pg from "pg";
+import { registerSessionRoutes } from "./sessions.ts";
 
 const REQUEST_ID = /^[A-Za-z0-9_-]{8,80}$/;
 const log = createLogger("perkly-api");
@@ -18,9 +20,13 @@ export function setShuttingDown(value: boolean): void {
   shuttingDown = value;
 }
 
-export function createApp(config: AppConfig, options: { databaseUrl?: string } = {}): Express {
+export function createApp(
+  config: AppConfig,
+  options: { databaseUrl?: string; pool?: pg.Pool } = {},
+): Express {
   const app = express();
   app.disable("x-powered-by");
+  app.use(express.json({ limit: "2kb" }));
   const summary = publicConfigSummary(config);
   const databaseUrl = options.databaseUrl;
 
@@ -53,6 +59,8 @@ export function createApp(config: AppConfig, options: { databaseUrl?: string } =
       adapters: summary.adapters,
     });
   });
+
+  registerSessionRoutes(app, config, options.pool);
 
   app.use((_request, response) => {
     response.status(404).json(errorBody("not_found", currentRequestId(response)));

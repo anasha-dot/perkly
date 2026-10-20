@@ -11,4 +11,11 @@ export {
 export type { DatabasePurpose, SafeDatabaseTarget } from "./target.ts";
 export { withTransaction } from "./transaction.ts";
 export { pingRuntimeDatabase } from "./readiness.ts";
+export {
+  createLocalFixtureSession,
+  findActiveSession,
+  hashSessionToken,
+  revokeSession,
+} from "./sessions.ts";
+export type { CreatedSession, SessionUser } from "./sessions.ts";
 export { LOCAL_DEV_DATABASE, LOCAL_TEST_DATABASE, localRoleUrl } from "./local.ts";

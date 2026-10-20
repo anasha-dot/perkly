@@ -402,3 +402,44 @@ The log contained `shutdown_started` and `shutdown_complete` for `SIGTERM`.
 ### Next
 
 P02-01. Acceptance: hashed server sessions and the loopback-only fictional identity adapter, with a local customer session and a local staff session.
+
+## 2026-10-20 — P02-01 local sessions
+
+**Scope:** User and session rows, hashed opaque session tokens, and the loopback-only fictional identity adapter. A customer session and a staff session were opened from fixture profiles. No password column, no PayPlus client, no checkout, and no membership billing. This adapter is not production authentication. `Perkly_From_Scratch_Roadmap.md` was not rewritten.
+
+**Observable result:** `POST /api/v1/auth/local/session` with `fixture-customer-nour` returns role `customer` and `fictional: true`. The same route with `fixture-cashier-omar` returns role `cashier`. The HttpOnly cookie is the only copy of the raw token. `app.sessions.token_hash` is the SHA-256 of that cookie and is not equal to it. Logout returns 204 and the cookie no longer loads a session. Hosted mode returns 404 `local_identity_unavailable`. A non-loopback client address is refused.
+
+### Commands and results
+
+Node.js 24.22.0. Local PostgreSQL was already healthy.
+
+```text
+npm run test:unit
+npm run test:smoke:database
+npm run test:integration
+npm run test:e2e
+npm run check
+```
+
+`test:unit` passed 28 tests. `test:smoke:database` passed and applied `0004_users_sessions`. `test:integration` passed 2 tests, including the customer and cashier session flow and the check that the stored hash is not the raw token. `test:e2e` passed. `npm run check` passed: typecheck, lint, Prettier, and the same 28 unit tests.
+
+```text
+DATABASE_URL=postgres://perkly_runtime:perkly_local_runtime@127.0.0.1:5432/perkly PORT=34577 node apps/api/src/main.ts
+```
+
+- Customer profile `fixture-customer-nour`: role `customer`, `fictional` true, `identityProvider` `local-fixtures`. The JSON body did not contain the cookie. `Set-Cookie` was HttpOnly.
+- `GET /api/v1/session` with that cookie returned capability `customer`.
+- Staff profile `fixture-cashier-omar`: role `cashier`, `fictional` true.
+- `GET /api/v1/session` with the staff cookie returned capability `cashier`.
+- SQL `token_hash = <raw staff cookie>` was false.
+
+### Unresolved
+
+- Cognito login is not implemented. That is P02-02.
+- CSRF is returned on the session but not enforced on mutations. That is P02-03.
+- O-03 stays open. AT01–AT34 were not run. The app is not production-ready.
+- E01–E09 stay pending. D-22 is unchanged. No merchant payment was added.
+
+### Next
+
+P02-02. Acceptance: Cognito authorization-code with PKCE, state, nonce, refresh, and logout, plus a separate admin pool. Hosted proof waits for Phase 10.

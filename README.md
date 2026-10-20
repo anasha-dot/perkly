@@ -100,6 +100,17 @@ The migration role owns the schema. The runtime role can read the foundation mar
 
 Shell wording in Hebrew and Arabic has not had native-speaker review.
 
+On the local API, with `DATABASE_URL` pointed at loopback `perkly`, a fictional profile can open a session:
+
+```bash
+curl -c /tmp/perkly-cookie -H 'content-type: application/json' \
+  -d '{"profileId":"fixture-customer-nour"}' \
+  http://127.0.0.1:3001/api/v1/auth/local/session
+curl -b /tmp/perkly-cookie http://127.0.0.1:3001/api/v1/session
+```
+
+`fixture-cashier-omar` opens a staff session the same way. The cookie is HttpOnly. The database stores only its hash. This route is refused unless the server and the client are on loopback, and it is not production authentication.
+
 ## Next task
 
-P02-01. Add users, hashed server sessions, and the loopback-only fictional identity adapter. Do not add checkout or a merchant payment.
+P02-02. Add Cognito authorization-code with PKCE for hosted identity. Do not add checkout or a merchant payment.

@@ -86,7 +86,7 @@ Customer, merchant, and admin screens are listed in `PRODUCT_SPEC.md` section 13
 | Branch facts for search | Approved branch-level fact rows with source, verification level, confirmed time, and expiry. | Model output. A merchant's own label of "Perkly-verified." |
 | Accounting reports | A later mapping approved by the accountant. | The operational journal. The journal supports reconciliation and audit. It is not automatically a full general ledger. |
 
-Emails, mutable product names, and browser-supplied merchant IDs are not financial keys. A membership identifier, when one exists, includes PayPlus and the environment. No adapter exists today. Do not create a merchant seller reference for PayPlus.
+Emails, mutable product names, and browser-supplied merchant IDs are not financial keys. A membership identifier, when one exists, includes PayPlus and the environment. The local fixture adapter is not production authentication. Do not create a merchant seller reference for PayPlus.
 
 Personal data inside immutable financial rows stays minimal so a future retention workflow can still run. The retention schedule itself is O-10 and is not approved.
 

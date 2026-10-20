@@ -1,7 +1,7 @@
 # Perkly project context
 
 **Updated:** 20 October 2026
-**Position:** P01-01 through P01-05 are done. The local shell runs without AWS. Health checks omit secrets, and the runtime role cannot change audit history. O-03 is open. D-22 is the payment model. No checkout, PayPlus client, or cloud resource exists. Nothing is production-ready.
+**Position:** P02-01 is done. Loopback fictional profiles can open hashed server sessions. That adapter is not production authentication. O-03 is open. D-22 is the payment model. No checkout, PayPlus client, or cloud resource exists. Nothing is production-ready.
 
 ## Goals
 
@@ -45,4 +45,4 @@ All of these are in `docs/` next to this file:
 
 ## Next
 
-The next unblocked task is P02-01: users, hashed server sessions, and the loopback-only fictional identity adapter. Anas’s next payment action is the membership-only E01 questions in `OWNER_SETUP.md`. That work does not block P02-01. P06-02 stays blocked until those answers exist. Do not start Phase 05 as the launch path.
+The next unblocked task is P02-02: Cognito authorization-code with PKCE, state, nonce, and a separate admin pool. Hosted proof waits for Phase 10. Anas’s next payment action is the membership-only E01 questions in `OWNER_SETUP.md`. That work does not block P02-02. P06-02 stays blocked until those answers exist. Do not start Phase 05 as the launch path.
