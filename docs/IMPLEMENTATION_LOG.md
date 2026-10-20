@@ -167,3 +167,73 @@ Run on Node.js 24.22.0 in this session:
 ### Next
 
 P01-02. Acceptance: a fresh database migrates, and test or reset commands reject unsafe targets. Do not pin the PostgreSQL major until O-03 is checked.
+
+## 2026-10-20 — P01-02 local PostgreSQL
+
+**Scope:** PostgreSQL Compose, a numbered migration runner, an isolated disposable test database, a transaction helper, and the runtime versus migration role split. No PayPlus client, no checkout, and no merchant payment. O-03 stays open. `Perkly_From_Scratch_Roadmap.md` was not rewritten.
+
+**Observable result:** A fresh `perkly_test` database on 127.0.0.1 migrates `0001_foundation`, and running the migration again applies nothing. Dropping and creating that database, then migrating again, applies the same migration and the same checksum. Reset and integration commands refuse a hosted URL, hosted `APP_MODE`, and the dev database `perkly`. The runtime role can read the foundation marker and cannot create a table, write the marker, or write `perkly_meta.schema_migrations`.
+
+PostgreSQL 17 is the Compose image proposal only. The running server reported PostgreSQL 17.11. That does not select the RDS major.
+
+### Commands and results
+
+Docker Compose 2.40.3. Image `postgres:17`. Node.js 24.22.0.
+
+```text
+docker compose -f infra/docker-compose.yml up -d --wait
+```
+
+Container `perkly-postgres-1` became healthy. Published port `127.0.0.1:5432->5432/tcp`.
+
+```text
+docker compose -f infra/docker-compose.yml exec -T postgres psql -U perkly_bootstrap -d postgres -c "SELECT version();"
+```
+
+Result: `PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit`.
+
+Init created databases `perkly` and `perkly_test`. Roles: `perkly_bootstrap` is the local superuser; `perkly_migrate` and `perkly_runtime` are not superusers and cannot create databases or roles.
+
+Refusals, each exit 1, with no database change:
+
+- `DATABASE_URL=postgres://perkly_migrate:secret@perkly.abc123.us-east-1.rds.amazonaws.com:5432/perkly_test npm run db:reset:test` — `Refused: the URL points at a hosted database.`
+- `DATABASE_URL=postgres://perkly_migrate:perkly_local_migrate@127.0.0.1:5432/perkly npm run db:reset:test` — `Refused: reset-test may only use perkly_test. "perkly" is not that database.`
+- `APP_MODE=production npm run db:reset:test` — `Refused: APP_MODE is hosted. This command only accepts a loopback disposable database.`
+- `DATABASE_URL=postgres://perkly_migrate:perkly_local_migrate@127.0.0.1:5432/perkly npm run test:integration` — `Refused: test may only use perkly_test. "perkly" is not that database.`
+- `DATABASE_URL=postgres://perkly_migrate:secret@203.0.113.10:5432/perkly npm run db:seed:local` — `Refused: host "203.0.113.10" is not loopback.`
+
+Fresh disposable database:
+
+```text
+npm run db:reset:test
+DATABASE_URL=postgres://perkly_migrate:perkly_local_migrate@127.0.0.1:5432/perkly_test npm run db:migrate
+DATABASE_URL=postgres://perkly_migrate:perkly_local_migrate@127.0.0.1:5432/perkly_test npm run db:migrate
+```
+
+First migrate: `applied: 0001_foundation`, `already_applied: (none)`. Second migrate: `applied: (none)`, `already_applied: 0001_foundation`. Checksum `c4c89fb808c8f44fe24bad7fb27f73f29597ec84433d02d7a26af7da828898c4`. `app.schema_info.postgres_major_proposal` is 17.
+
+```text
+npm run db:reset:test
+DATABASE_URL=postgres://perkly_migrate:perkly_local_migrate@127.0.0.1:5432/perkly_test npm run db:migrate
+```
+
+Reset left `perkly_test` empty. Migrate applied `0001_foundation` again. Checksum prefix `c4c89fb808c8`.
+
+`npm run db:migrate` with no `DATABASE_URL` migrated dev database `perkly` and applied `0001_foundation`. `npm run db:seed:local` exited 0 and wrote nothing.
+
+`npm run test:integration` passed one test: the fresh disposable database migrated the same way twice, the transaction helper rolled back an insert, and the runtime role received SQLSTATE 42501 for DDL, for a marker write, and for a migration-table write.
+
+`npm run test:unit` passed 12 tests, including the target guards.
+
+### Unresolved
+
+- O-03 stays open. Local 17.11 is not an RDS decision.
+- The API and worker still do not connect to PostgreSQL. `GET /api/v1` still reports `database: "not_connected"`.
+- Seed rows are not loaded. That is P01-03.
+- Runtime grants for an audit table are P01-05.
+- AT01–AT34 were not run. `test:e2e` is not implemented. The app is not production-ready.
+- E01–E09 stay pending. D-22 is unchanged. No merchant payment was added.
+
+### Next
+
+P01-03. Acceptance: local mode runs without AWS, and hosted configuration rejects demo identity, simulator payments, and demo search. P01-05 is also unblocked.

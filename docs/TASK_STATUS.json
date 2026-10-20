@@ -3,8 +3,8 @@
   "projectOrigin": "empty_repository",
   "updatedAt": "2026-10-20",
   "releaseState": "local",
-  "nextUnblockedTask": "P01-02",
-  "note": "P01-01 is done. The Vue shell, Express API, and idle worker run locally on Node.js 24.22.0. There is no database connection. D-22 still holds: Perkly does not charge a merchant product sale. No checkout and no PayPlus client were added. Membership billing is not in this build. Phase 05 merchant-sale tasks stay deferred_by_owner. P06-02 stays blocked_external on the membership-only E01. P04-01 is not started. The next task is P01-02.",
+  "nextUnblockedTask": "P01-03",
+  "note": "P01-01 and P01-02 are done. Local Compose uses the postgres:17 image as a proposal and reported PostgreSQL 17.11. O-03 stays open for the RDS check. The API still does not open a database connection. D-22 still holds: Perkly does not charge a merchant product sale. No checkout and no PayPlus client were added. Membership billing is not in this build. Phase 05 merchant-sale tasks stay deferred_by_owner. P06-02 stays blocked_external on the membership-only E01. P01-05 is also unblocked. The next task in the phase list is P01-03.",
   "tasks": [
     {
       "id": "P00-01",
@@ -77,18 +77,22 @@
         "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-01."
       ],
       "blocker": null,
-      "nextAction": "None. The local shell runs. The next task is P01-02."
+      "nextAction": "None. The local shell runs."
     },
     {
       "id": "P01-02",
-      "status": "not_started",
+      "status": "done",
       "dependsOn": [
         "P01-01"
       ],
       "owner": "bot",
-      "evidence": [],
+      "evidence": [
+        "infra/docker-compose.yml uses image postgres:17. A fresh perkly_test database migrated 0001_foundation, and a second run applied nothing.",
+        "Reset and test commands refused a hosted URL, APP_MODE=production, and the dev database perkly. npm run test:integration passed on the disposable database.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-02. O-03 stays open."
+      ],
       "blocker": null,
-      "nextAction": "Add PostgreSQL, migrations, a disposable test database, and transaction helpers. Reset must reject unsafe targets. Pin the major only after O-03 is checked."
+      "nextAction": "None. The disposable database migrates. The next phase-list task is P01-03."
     },
     {
       "id": "P01-03",

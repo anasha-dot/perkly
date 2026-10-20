@@ -4,12 +4,13 @@ Local shell for Perkly. The web app, API, and worker run on your machine without
 
 Perkly does not charge a merchant sale. The business charges the customer on its own till. There is no checkout and no merchant payment in this repository. Membership billing is a later task.
 
-The database is the next task (P01-02). Nothing here connects to PostgreSQL.
+The API does not open a database connection yet. PostgreSQL is started separately.
 
 ## Requirements
 
 - Node.js 24.22.0 or a newer Node 24 release. The checked file is `.nvmrc`.
 - npm 11.19.1, the copy that ships with Node.js 24.22.0.
+- Docker, for the local PostgreSQL Compose file.
 
 ## Local setup
 
@@ -47,36 +48,50 @@ npm run test:unit
 
 `npm run check` runs the typecheck, lint, format check, and unit tests.
 
-## Database commands
+## Database
+
+Compose uses the `postgres:17` image. That major is a proposal. The RDS major is not chosen yet.
 
 ```bash
+docker compose -f infra/docker-compose.yml up -d --wait
 npm run db:migrate
-npm run db:seed:local
-npm run test:integration
-npm run test:e2e
 ```
 
-These commands exit with an error. They do not connect, migrate, or seed. P01-02 adds PostgreSQL, the migration runner, a disposable test database, and transaction helpers. The PostgreSQL major version is not chosen yet. When seed exists, it must refuse any target that is not local and disposable.
+`db:migrate` applies numbered migrations to the local dev database `perkly` on 127.0.0.1:5432. The disposable test database is `perkly_test`.
+
+```bash
+npm run db:reset:test
+DATABASE_URL=postgres://perkly_migrate:perkly_local_migrate@127.0.0.1:5432/perkly_test npm run db:migrate
+npm run test:integration
+```
+
+`db:reset:test` drops and recreates only `perkly_test`. `test:integration` does the same, then migrates it. Both refuse a hosted host, `APP_MODE=staging` or `production`, and any database name other than `perkly_test`.
+
+`db:seed:local` accepts only the loopback dev database and writes nothing. Fictional seed is the next task. `test:e2e` is not implemented.
+
+Local passwords are in `infra/docker-compose.yml` and `packages/database/src/local.ts`. They are not for a hosted database.
+
+The migration role owns the schema. The runtime role can read the foundation marker and cannot change schema. The API and worker do not use either role yet.
 
 ## Layout
 
-| Path                     | What it is in this build                                                    |
-| ------------------------ | --------------------------------------------------------------------------- |
-| `apps/web/`              | Vue 3, TypeScript, and Vite. One home screen and the locale files.          |
-| `apps/api/`              | Express API. One route, `GET /api/v1`.                                      |
-| `apps/worker/`           | Worker process. It starts and waits.                                        |
-| `packages/domain/`       | Place for pricing and permission rules. No rules yet.                       |
-| `packages/contracts/`    | Shared locale and service-descriptor types.                                 |
-| `packages/database/`     | Place for PostgreSQL access. No connection yet.                             |
-| `packages/integrations/` | Place for adapters. No provider client.                                     |
-| `packages/search/`       | Place for search. No model client.                                          |
-| `infra/`                 | Reserved for CDK. No stack.                                                 |
-| `scripts/`               | Local dev, and the database commands that refuse to run.                    |
-| `tests/`                 | Unit tests for locale direction. Integration and browser folders are empty. |
-| `docs/`                  | Product rules, decisions, and task tracking copied from Phase 00.           |
+| Path                     | What it is in this build                                                  |
+| ------------------------ | ------------------------------------------------------------------------- |
+| `apps/web/`              | Vue 3, TypeScript, and Vite. One home screen and the locale files.        |
+| `apps/api/`              | Express API. One route, `GET /api/v1`.                                    |
+| `apps/worker/`           | Worker process. It starts and waits.                                      |
+| `packages/domain/`       | Place for pricing and permission rules. No rules yet.                     |
+| `packages/contracts/`    | Shared locale and service-descriptor types.                               |
+| `packages/database/`     | Migration runner, transaction helper, and local role split.               |
+| `packages/integrations/` | Place for adapters. No provider client.                                   |
+| `packages/search/`       | Place for search. No model client.                                        |
+| `infra/`                 | Local PostgreSQL Compose. No CDK stack.                                   |
+| `scripts/`               | Local dev, and the integration test guard.                                |
+| `tests/`                 | Locale and database-target unit tests, plus one disposable-database test. |
+| `docs/`                  | Product rules, decisions, and task tracking.                              |
 
 Shell wording in Hebrew and Arabic has not had native-speaker review.
 
 ## Next task
 
-P01-02. Add PostgreSQL, migrations, an isolated test database, and transaction helpers.
+P01-03. Validate the environment, select adapters, and add the local fictional seed. P01-05 can also start. Do not add checkout or a merchant payment.

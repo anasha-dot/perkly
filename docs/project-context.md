@@ -1,7 +1,7 @@
 # Perkly project context
 
 **Updated:** 20 October 2026
-**Position:** P01-01 is done. The local Vue shell, Express API, and idle worker run. D-22 is the payment model. No database, checkout, PayPlus client, or cloud resource exists. Nothing is production-ready.
+**Position:** P01-01 and P01-02 are done. The local shell runs, and local Compose proposes PostgreSQL 17. O-03 is open. D-22 is the payment model. No checkout, PayPlus client, or cloud resource exists. Nothing is production-ready.
 
 ## Goals
 
@@ -20,7 +20,7 @@ The client is a responsive installable web app in English, Hebrew, and Arabic, w
 - Invoice+ is for the ₪15 on Perkly’s legal name. Perkly does not issue the merchant’s sale document. Perkly still needs an accountant to file VAT.
 - E01 is not complete. It covers only fees on Perkly’s membership deposit, the recurring charge day, idempotency, PAN-free membership refunds, the sandbox host, Invoice+ for the ₪15, and a chargeback export. Do not ask PayPlus to settle a merchant sale.
 - Phase 05 merchant-sale tasks are not the launch path. P06-02 stays blocked on this narrower E01.
-- PostgreSQL’s major version and the public-offer ceiling are not decided.
+- PostgreSQL’s major version is not decided (O-03). Local Compose uses the `postgres:17` image as a proposal. The public-offer ceiling is not decided.
 - Advertising, wallets, lending, delivery, multi-business carts, appointments, POS sync, and native store apps are out of the first release.
 - Do not create billable infrastructure, send real messages, call paid AI, or move real money without a later authorization.
 
@@ -45,4 +45,4 @@ All of these are in `docs/` next to this file:
 
 ## Next
 
-The next unblocked build task is P01-02: PostgreSQL, migrations, a disposable test database, and transaction helpers. Anas’s next payment action is the membership-only E01 questions in `OWNER_SETUP.md`. That work does not block P01-02. P06-02 stays blocked until those answers exist. Do not start Phase 05 as the launch path.
+The next phase-list task is P01-03: environment validation, adapter selection, and the local fictional seed. P01-05 is also unblocked. Anas’s next payment action is the membership-only E01 questions in `OWNER_SETUP.md`. That work does not block P01-03. P06-02 stays blocked until those answers exist. Do not start Phase 05 as the launch path.

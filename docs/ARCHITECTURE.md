@@ -26,17 +26,27 @@ Local development must run without an AWS account: native PostgreSQL, a loopback
 | `apps/worker/` | Outbox jobs, provider recovery, notifications, reconciliation | Scaffold. Process starts and stays idle. No queue. |
 | `packages/domain/` | Pricing, permissions, order, refund, and membership rules. No network calls | Scaffold. No pricing rules yet. |
 | `packages/contracts/` | Shared schemas and API DTOs. OpenAPI is published from implemented schemas, which do not exist yet | Locale codes and the shell descriptor. No OpenAPI file. |
-| `packages/database/` | Connections, repositories, transactions, numbered migrations, runtime grants | Scaffold. No connection. |
+| `packages/database/` | Connections, repositories, transactions, numbered migrations, runtime grants | Local migration runner, transaction helper, and role split. No product tables yet. |
 | `packages/integrations/` | Adapters for payment, identity, email, object storage, and search/AI | Scaffold. No provider client. |
 | `packages/search/` | Intent schema, fact matching, straight-line distance, evaluation fixtures | Scaffold. No search. |
-| `infra/` | CDK stacks and environment context, when E03 authorizes them | Directory only. No stack. |
-| `scripts/` | Setup, migrate, seed, check, and release tooling | `dev` runs. Database scripts refuse to run. |
-| `tests/` | Unit, integration, concurrency, contract, and browser tests | Locale unit tests only. |
-| `docs/` | This design set, task tracking, and future evidence | Phase 00 files, with P01-01 status recorded. |
+| `infra/` | CDK stacks and environment context, when E03 authorizes them | Local Compose only. No CDK stack. |
+| `scripts/` | Setup, migrate, seed, check, and release tooling | `db:migrate` and `db:reset:test` run against loopback. Seed writes nothing yet. |
+| `tests/` | Unit, integration, concurrency, contract, and browser tests | Locale unit tests, target guards, and one disposable-database migration test. |
+| `docs/` | This design set, task tracking, and future evidence | Phase 00 files, with P01-01 and P01-02 status recorded. |
 
 In local development the web server proxies API calls so the browser sees one origin. In hosting, the compiled Vue app and the API are served from the same HTTPS origin. That keeps session cookies, callbacks, and CSRF on one site. CloudFront is for merchant images, not for sitting in front of the authenticated application, in the initial design.
 
-Root scripts exist. `dev`, `typecheck`, `test:unit`, `build`, `check`, `start:api`, and `start:worker` run. `db:migrate`, `db:seed:local`, `test:integration`, and `test:e2e` exit with an error and do not touch a database. Seed and reset, once they exist, must refuse any target that is not local and disposable.
+Root scripts exist. `db:migrate` applies numbered SQL on loopback database `perkly` or `perkly_test`. `db:reset:test` and `test:integration` accept only loopback `perkly_test`. `db:seed:local` accepts only loopback `perkly` and writes no rows yet. All of those commands refuse a hosted host, a hosted `APP_MODE`, and any other database name. `test:e2e` is still not implemented.
+
+### Local database roles
+
+| Role | Local use | What it must not do |
+| --- | --- | --- |
+| `perkly_bootstrap` | Compose superuser. Creates the two databases and the other two roles. | Not an application role. Not used by the API or worker. Hosted bootstrap is a later task. |
+| `perkly_migrate` | Owns `perkly` and `perkly_test`. Applies numbered migrations and writes `perkly_meta.schema_migrations`. | Not a superuser. No createdb and no createrole. |
+| `perkly_runtime` | Connects and reads what a migration grants. Today that is `SELECT` on `app.schema_info`. | No DDL, no write to `schema_info`, and no access to `perkly_meta`. The audit-table grants are P01-05. |
+
+Local passwords are non-production and are valid only on loopback. PostgreSQL 17 is the Compose image proposal. O-03 stays open.
 
 ## 3. Role matrix
 
@@ -82,7 +92,7 @@ Personal data inside immutable financial rows stays minimal so a future retentio
 
 ## 5. Domain and schema design
 
-Migrations are created in the phase that owns the data. The groups below are the common design, not SQL that has been applied. Proposed storage for money is PostgreSQL `bigint` agorot. The major version of PostgreSQL is O-03 and is not installed.
+Migrations are created in the phase that owns the data. The groups below are the common design, not product tables. P01-02 applied `0001_foundation` only. Proposed storage for money is PostgreSQL `bigint` agorot. The major version is still O-03. Local Compose uses the `postgres:17` image as a proposal.
 
 Use foreign keys, check constraints, scoped uniqueness, and indexes. Rates are integer basis points. Optimistic versions apply to stock edits.
 
@@ -296,4 +306,4 @@ Secrets stay out of source, CDK context, browser assets, and logs. No secret exi
 
 ## 9. What this design does not include
 
-No schema has been migrated. `npm run dev` listens on 127.0.0.1 for the shell only. No AWS account is connected. No membership adapter can be written until E01 supplies approved documentation. Merchant settlement through Perkly is withdrawn (D-22). PostgreSQL 17 is not selected (O-03).
+`0001_foundation` is the only applied migration. `npm run dev` still does not open a database connection. No AWS account is connected. No membership adapter can be written until E01 supplies approved documentation. Merchant settlement through Perkly is withdrawn (D-22). PostgreSQL 17 is the local image proposal, not a selected RDS major (O-03).

@@ -186,9 +186,9 @@ O-01 and O-03 stay open. O-02 is withdrawn for merchant sales. O-04 is closed by
 ### O-03. PostgreSQL major version
 
 - **Decision:** Unset. PostgreSQL 17 is the roadmap's proposed starting major, subject to support in the chosen AWS account and region. Development, CI, and RDS must use the same major once it is chosen.
-- **Rationale:** The roadmap forbids treating a version number as permanently correct without account-region validation. No database is installed in this phase.
-- **Owner:** Anas Hallumi for the account and region facts. Bot to confirm the vendor documentation when Phase 01 chooses the image.
-- **Effect:** P01-02 does not pin 17 until that check is written into this log. Phase 00 claims no database version is running.
+- **Rationale:** The roadmap forbids treating a version number as permanently correct without account-region validation.
+- **Owner:** Anas Hallumi for the account and region facts. The local image proposal is recorded by the build.
+- **Effect:** P01-02 runs local Compose from the `postgres:17` image. On 20 October 2026 that image reported PostgreSQL 17.11. This is not a choice of the RDS major. O-03 stays open until the account and region check is written here.
 
 ### O-04. Payment provider
 
@@ -228,4 +228,4 @@ These are the roadmap's stated starting values. They are in force for the releva
 
 ## 4. What remains open after D-22
 
-Merchant product payments are outside Perkly. PayPlus is not approved for the membership charge. Still open: the public-offer maximum (O-01), the PostgreSQL major (O-03), discount-code mechanics (O-15), and the membership E01 items: fees on Perkly’s deposit, the recurring charge day, idempotency, PAN-free membership refunds, sandbox proof, Invoice+ on Perkly’s legal name for the ₪15, and a chargeback export. P01-01 is done. No task from P01-02 onward is done. The unit checks in that task are locale direction only. AT01–AT34 have not been run. Phase 05 is not the launch path. P06-02 is `blocked_external` on E01.
+Merchant product payments are outside Perkly. PayPlus is not approved for the membership charge. Still open: the public-offer maximum (O-01), the PostgreSQL major (O-03), discount-code mechanics (O-15), and the membership E01 items: fees on Perkly’s deposit, the recurring charge day, idempotency, PAN-free membership refunds, sandbox proof, Invoice+ on Perkly’s legal name for the ₪15, and a chargeback export. P01-01 and P01-02 are done. No task from P01-03 onward is done. O-03 stays open. AT01–AT34 have not been run. Phase 05 is not the launch path. P06-02 is `blocked_external` on E01.

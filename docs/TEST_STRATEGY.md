@@ -1,6 +1,6 @@
 # Test strategy
 
-**Status:** Plan. P01-01 ran locale unit tests only. No AT01–AT34 scenario has been run. No test database or CI job exists.
+**Status:** Plan. P01-01 ran locale unit tests. P01-02 migrated a disposable local database and checked that test and reset commands refuse unsafe targets. No AT01–AT34 scenario has been run. No CI job exists.
 **Date:** 20 October 2026.
 **Acceptance set:** AT01–AT34 from roadmap section 10. Line-coverage percentages do not replace these scenarios.
 

@@ -2,7 +2,7 @@
   "name": "perkly",
   "private": true,
   "version": "0.0.0",
-  "description": "Perkly local application shell. The database and membership billing are later tasks.",
+  "description": "Perkly local application. Membership billing is a later task.",
   "type": "module",
   "engines": {
     "node": ">=24.22.0 <25"
@@ -14,11 +14,12 @@
   ],
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "db:migrate": "node scripts/db-migrate.mjs",
-    "db:seed:local": "node scripts/db-seed-local.mjs",
+    "db:migrate": "node packages/database/src/cli.ts migrate",
+    "db:reset:test": "node packages/database/src/cli.ts reset-test",
+    "db:seed:local": "node packages/database/src/cli.ts seed-local",
     "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --pretty false --noEmit && npm run typecheck -w @perkly/web",
     "test:unit": "node --test tests/unit/*.test.ts",
-    "test:integration": "node scripts/not-implemented.mjs test:integration",
+    "test:integration": "node scripts/test-integration.ts",
     "test:e2e": "node scripts/not-implemented.mjs test:e2e",
     "build": "tsc -b --pretty false && npm run build -w @perkly/web",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test:unit",

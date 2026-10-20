@@ -31,6 +31,7 @@ export default tseslint.config(
       "apps/worker/**/*.ts",
       "packages/**/*.ts",
       "scripts/**/*.mjs",
+      "scripts/**/*.ts",
       "tests/**/*.ts",
       "eslint.config.js",
     ],
