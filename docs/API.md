@@ -73,7 +73,9 @@ Proposed status mapping, to be confirmed when handlers exist: `400` validation, 
 }
 ```
 
-The user id is Perkly's immutable id. The response does not include an access token, identity token, or refresh token. `pool` is `customer` or `admin` for Cognito, and null for a loopback fixture session. `admin_pool` in `capabilities` means the session came from the admin pool. It is not an application permission grant. Those guards are P02-03. CSRF is returned and is not enforced yet. An https application origin marks the cookie `Secure`.
+The user id is Perkly's immutable id. The response does not include an access token, identity token, or refresh token. `pool` is `customer` or `admin` for Cognito, and null for a loopback fixture session. `capabilities` does not treat `admin_pool` as a grant. `administrator` appears only when the session pool is `admin` and `app.admin_grants` has a row for that user. A customer-pool session stays `customer` even if a grant row exists.
+
+Browser mutations require the session cookie, an `Origin` header exactly equal to `APP_ORIGIN`, and `x-csrf-token` equal to the session `csrfToken`. Login creation has no CSRF token yet, so it checks `Origin` only. Logout and refresh of an active session do both checks and do not revoke or rotate when either check fails. The cookie is `HttpOnly`, `SameSite=Lax`, and `Path=/`. It is `Secure` when `APP_ORIGIN` is https. A bearer header is not a session. Auth routes are limited to 180 requests a minute for one client address. Account, staff, and admin routes are limited to 60. The limit response is 429 `rate_limited`.
 
 The refresh token is stored only until logout because the provider requires the raw token on refresh and revoke. It is not the session cookie and it is not hashed. State and nonce are stored only as SHA-256 hashes. The PKCE verifier is kept until the callback consumes the flow, then cleared. Its hash remains.
 
@@ -177,14 +179,24 @@ Wrong merchant, replay, and guess attempts fail and count toward rate limits.
 
 ## 11. Merchant family proposal
 
-The roadmap requires business-scoped branches, staff, catalogue, offers, stock, CSV, and reports. It does not assign URL strings to each of them. Proposed Perkly paths, none implemented:
+The roadmap requires business-scoped branches, staff, catalogue, offers, stock, CSV, and reports. It does not assign URL strings to each of them. The staff guard below is implemented. The other proposed paths are not.
+
+| Method and path | Proposal status | Contract |
+| --- | --- | --- |
+| `GET /api/v1/account` | Implemented | The session user's id, locale, and role. A query `userId` does not switch the account. |
+| `GET /api/v1/users/:userId` | Implemented | Own id only. Another id is 404 `not_found` with no email or display name. |
+| `GET /api/v1/businesses/:businessId/staff` | Implemented | The caller's membership role for that business only. No membership is 404 with no other business body. |
+| `POST /api/v1/businesses/:businessId/staff` | Guard only | Requires Origin and CSRF. A cashier or manager receives 403 `not_allowed`. A non-member receives 404. The owner of that business receives 403 `not_in_this_build`. A role in the body is ignored. Invitations are P03-01. |
+| `GET /api/v1/admin/assurance` | Implemented | 200 `{ "assured": true }` only for an admin-pool session with an `app.admin_grants` row. A customer-pool session is 403 `not_allowed` even when that row exists. This is not hosted MFA. |
+
+Proposed Perkly paths, not implemented:
 
 | Proposed path | Contract |
 | --- | --- |
 | `POST /api/v1/merchant/applications` | Start an application. |
 | `GET /api/v1/merchant/businesses/:businessId` | Owner or staff reads onboarding and provider-onboarding status. |
 | `/api/v1/businesses/:businessId/branches` | Branch profile. Scope checked on the server. |
-| `/api/v1/businesses/:businessId/staff` | Invitations and roles. Owner-restricted where the matrix says so. |
+| `/api/v1/businesses/:businessId/staff` | Invitation records are not implemented. The guard on this path is in the table above. |
 | `/api/v1/businesses/:businessId/catalogue` | Products, services, surplus, terms, prices. |
 | `/api/v1/businesses/:businessId/offers` | Create and read approval state. |
 | `/api/v1/businesses/:businessId/stock` | Optimistic version required on edits. Available and reserved stay distinct. |
@@ -199,7 +211,7 @@ The roadmap names the capabilities and not the paths. Proposed Perkly paths:
 
 | Proposed path | Contract |
 | --- | --- |
-| `GET /api/v1/account` and `PATCH /api/v1/account` | Own profile and locale only. |
+| `GET /api/v1/account` and `PATCH /api/v1/account` | `GET` is implemented as the session user's id, locale, and role. `PATCH` and locale editing are not implemented. |
 | `/api/v1/notifications` | Own notifications. |
 | `/api/v1/favourites` | Own favourites. |
 | `/api/v1/support/cases` | Own cases. |
@@ -214,7 +226,7 @@ Proposed prefix: `/api/v1/admin/...` for approval, jobs, exceptions, disputes, s
 
 Requirements that are already fixed:
 
-- The caller is in the admin identity pool, with the required assurance, and has an application admin grant. A customer-pool token is refused.
+- `GET /api/v1/admin/assurance` is the implemented check. The caller must be in the admin identity pool and have an application admin grant. A customer-pool token is refused. Hosted admin MFA is not part of this check.
 - Actions are audited.
 - The client cannot submit a privileged role and receive it.
 - There is no mark-paid endpoint, no unverified grant-entitlement endpoint, and no delete-financial-history endpoint.

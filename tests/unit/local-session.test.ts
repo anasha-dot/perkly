@@ -3,7 +3,11 @@ import { createHash } from "node:crypto";
 import { once } from "node:events";
 import test from "node:test";
 import { createApp } from "../../apps/api/src/app.ts";
-import { localIdentityAllowed, sessionCookie } from "../../apps/api/src/sessions.ts";
+import {
+  clearSessionCookie,
+  localIdentityAllowed,
+  sessionCookie,
+} from "../../apps/api/src/sessions.ts";
 import { hashSessionToken } from "@perkly/database";
 import { loadConfig } from "@perkly/integrations";
 
@@ -16,6 +20,7 @@ test("an https origin marks the session cookie Secure", () => {
   assert.match(hosted, /HttpOnly/);
   assert.match(hosted, /Secure/);
   assert.match(hosted, /SameSite=Lax/);
+  assert.match(clearSessionCookie("https://perkly.example.com"), /Secure/);
   const local = sessionCookie(
     "opaque-token",
     new Date(Date.now() + 60_000),

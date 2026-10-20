@@ -32,6 +32,8 @@ test(
     const target = assertSafeDatabaseTarget(url, "test");
     await migrate(url);
     const pool = createPool("runtime", target);
+    const migratePool = createPool("migrate", target);
+    await migratePool.query("DELETE FROM app.rate_buckets WHERE bucket_key LIKE 'auth:%'");
     const idp = await startIdentityProvider();
     const server = createApp(protocolConfig(idp.origin), { pool }).listen(0, "127.0.0.1");
     await once(server, "listening");
@@ -89,7 +91,9 @@ test(
       });
       assert.equal(admin.session.user.role, "admin_pool");
       assert.equal(admin.session.user.pool, "admin");
+      assert.deepEqual(admin.session.capabilities, []);
       assert.notEqual(admin.session.user.id, customer.session.user.id);
+      await assertAdminAssurance(base, migratePool, customer, admin);
       const customerStill = await readSession(base, customer.cookie);
       assert.equal(customerStill.user.pool, "customer");
       assert.equal(customerStill.user.role, "customer");
@@ -193,7 +197,7 @@ test(
       const beforeRefresh = customer.refreshToken;
       const refreshed = await fetch(`${base}/api/v1/auth/refresh`, {
         method: "POST",
-        headers: { cookie: `perkly_session=${customer.cookie}` },
+        headers: mutationHeaders(customer.cookie, customer.session.csrfToken),
       });
       const refreshedText = await refreshed.text();
       assert.equal(refreshed.status, 200);
@@ -209,7 +213,7 @@ test(
       idp.failRefresh = true;
       const failedRefresh = await fetch(`${base}/api/v1/auth/refresh`, {
         method: "POST",
-        headers: { cookie: `perkly_session=${customer.cookie}` },
+        headers: mutationHeaders(customer.cookie, customer.session.csrfToken),
       });
       assert.equal(failedRefresh.status, 401);
       assert.equal(((await failedRefresh.json()) as { code: string }).code, "invalid_grant");
@@ -218,7 +222,7 @@ test(
       idp.refreshSubject = "intruder-subject";
       const mismatch = await fetch(`${base}/api/v1/auth/refresh`, {
         method: "POST",
-        headers: { cookie: `perkly_session=${admin.cookie}` },
+        headers: mutationHeaders(admin.cookie, admin.session.csrfToken),
       });
       assert.equal(mismatch.status, 401);
       assert.equal(((await mismatch.json()) as { code: string }).code, "identity_mismatch");
@@ -230,7 +234,7 @@ test(
       const latest = await refreshTokenFor(pool, customer.session.user.id);
       const logout = await fetch(`${base}/api/v1/auth/logout`, {
         method: "POST",
-        headers: { cookie: `perkly_session=${customer.cookie}` },
+        headers: mutationHeaders(customer.cookie, customer.session.csrfToken),
       });
       assert.equal(logout.status, 204);
       assert.equal(idp.revoked.includes(latest), true);
@@ -247,7 +251,7 @@ test(
       idp.failRevoke = true;
       const logoutFails = await fetch(`${base}/api/v1/auth/logout`, {
         method: "POST",
-        headers: { cookie: `perkly_session=${again.cookie}` },
+        headers: mutationHeaders(again.cookie, again.session.csrfToken),
       });
       assert.equal(logoutFails.status, 204);
       const dead = await fetch(`${base}/api/v1/session`, {
@@ -257,10 +261,67 @@ test(
     } finally {
       server.close();
       await idp.close();
+      await migratePool.query("DELETE FROM app.rate_buckets WHERE bucket_key LIKE 'auth:%'");
+      await migratePool.end();
       await pool.end();
     }
   },
 );
+
+function mutationHeaders(cookie: string, csrfToken: string): Record<string, string> {
+  return {
+    cookie: `perkly_session=${cookie}`,
+    origin: "http://127.0.0.1:5173",
+    "x-csrf-token": csrfToken,
+  };
+}
+
+async function assertAdminAssurance(
+  base: string,
+  migratePool: pg.Pool,
+  customer: LoginResult,
+  admin: LoginResult,
+): Promise<void> {
+  const customerDenied = await fetch(`${base}/api/v1/admin/assurance`, {
+    headers: { cookie: `perkly_session=${customer.cookie}` },
+  });
+  assert.equal(customerDenied.status, 403);
+  assert.equal(((await customerDenied.json()) as { code: string }).code, "not_allowed");
+
+  await migratePool.query(
+    "INSERT INTO app.admin_grants (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING",
+    [customer.session.user.id],
+  );
+  const customerGranted = await fetch(`${base}/api/v1/admin/assurance`, {
+    headers: { cookie: `perkly_session=${customer.cookie}` },
+  });
+  const customerGrantedText = await customerGranted.text();
+  assert.equal(customerGranted.status, 403);
+  assert.equal(customerGrantedText.includes("assured"), false);
+  const customerSession = await readSession(base, customer.cookie);
+  assert.deepEqual(customerSession.capabilities, ["customer"]);
+
+  const bearer = await fetch(`${base}/api/v1/admin/assurance`, {
+    headers: { authorization: `Bearer ${customer.cookie}` },
+  });
+  assert.equal(bearer.status, 401);
+
+  const adminDenied = await fetch(`${base}/api/v1/admin/assurance`, {
+    headers: { cookie: `perkly_session=${admin.cookie}` },
+  });
+  assert.equal(adminDenied.status, 403);
+  await migratePool.query(
+    "INSERT INTO app.admin_grants (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING",
+    [admin.session.user.id],
+  );
+  const adminAllowed = await fetch(`${base}/api/v1/admin/assurance`, {
+    headers: { cookie: `perkly_session=${admin.cookie}` },
+  });
+  assert.equal(adminAllowed.status, 200);
+  assert.deepEqual(await adminAllowed.json(), { assured: true });
+  const adminSession = await readSession(base, admin.cookie);
+  assert.deepEqual(adminSession.capabilities, ["administrator"]);
+}
 
 type SessionBody = {
   user: {

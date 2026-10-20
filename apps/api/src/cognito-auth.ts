@@ -1,6 +1,9 @@
 import { errorBody } from "@perkly/contracts";
 import {
+  AUTH_RATE_LIMIT,
+  AUTH_RATE_WINDOW_SECONDS,
   consumeOAuthFlow,
+  consumeRateLimit,
   createCognitoSession,
   findActiveSession,
   insertOAuthFlow,
@@ -24,7 +27,8 @@ import {
 import { randomBytes } from "node:crypto";
 import type { Express, Request, Response } from "express";
 import type pg from "pg";
-import { sessionBody, sessionCookie } from "./sessions.ts";
+import { clientAddress, currentRequestId, rejectBrowserMutation } from "./request-guards.ts";
+import { publicSession, sessionCookie } from "./sessions.ts";
 
 const log = createLogger("perkly-api");
 const PUBLIC_CODE = /^[a-z0-9_]{1,40}$/;
@@ -58,6 +62,9 @@ async function startLogin(
   }
   if (pool === undefined) {
     response.status(503).json(errorBody("not_ready", requestId));
+    return;
+  }
+  if (!(await allowAuth(pool, request, response))) {
     return;
   }
   const poolName = requestedPool(request.query.pool);
@@ -101,6 +108,9 @@ async function finishLogin(
   }
   if (pool === undefined) {
     response.status(503).json(errorBody("not_ready", requestId));
+    return;
+  }
+  if (!(await allowAuth(pool, request, response))) {
     return;
   }
   const state = readQuery(request, "state");
@@ -162,6 +172,17 @@ async function refreshLogin(
     response.status(401).json(errorBody("no_session", requestId));
     return;
   }
+  if (!(await allowAuth(pool, request, response))) {
+    return;
+  }
+  const active = await findActiveSession(pool, token);
+  if (active === undefined) {
+    response.status(401).json(errorBody("no_session", requestId));
+    return;
+  }
+  if (rejectBrowserMutation(request, response, config, active.csrfToken)) {
+    return;
+  }
   const material = await readRefreshToken(pool, token);
   if (material === undefined) {
     response.status(401).json(errorBody("no_session", requestId));
@@ -182,12 +203,12 @@ async function refreshLogin(
     if (tokens.refreshToken !== material.refreshToken) {
       await replaceRefreshToken(pool, token, tokens.refreshToken);
     }
-    const active = await findActiveSession(pool, token);
-    if (active === undefined) {
+    const current = await findActiveSession(pool, token);
+    if (current === undefined) {
       response.status(401).json(errorBody("no_session", requestId));
       return;
     }
-    response.json(sessionBody(active.user, active.csrfToken));
+    response.json(await publicSession(pool, current.user, current.csrfToken));
   } catch (error) {
     if (error instanceof CognitoProtocolError) {
       const codeName = publicCode(error.code, "refresh_failed");
@@ -234,9 +255,18 @@ function readQuery(request: Request, name: string): string | undefined {
   return typeof value === "string" && value !== "" ? value : undefined;
 }
 
-function currentRequestId(response: Response): string {
-  const value = response.locals.requestId;
-  return typeof value === "string" ? value : "req_unknown";
+async function allowAuth(pool: pg.Pool, request: Request, response: Response): Promise<boolean> {
+  const allowed = await consumeRateLimit(
+    pool,
+    `auth:${clientAddress(request)}`,
+    AUTH_RATE_LIMIT,
+    AUTH_RATE_WINDOW_SECONDS,
+  );
+  if (!allowed) {
+    response.status(429).json(errorBody("rate_limited", currentRequestId(response)));
+    return false;
+  }
+  return true;
 }
 
 function readCookie(header: string | undefined, name: string): string | undefined {

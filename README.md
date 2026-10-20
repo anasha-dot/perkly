@@ -104,6 +104,7 @@ On the local API, with `DATABASE_URL` pointed at loopback `perkly`, a fictional 
 
 ```bash
 curl -c /tmp/perkly-cookie -H 'content-type: application/json' \
+  -H 'origin: http://127.0.0.1:5173' \
   -d '{"profileId":"fixture-customer-nour"}' \
   http://127.0.0.1:3001/api/v1/auth/local/session
 curl -b /tmp/perkly-cookie http://127.0.0.1:3001/api/v1/session
@@ -113,6 +114,8 @@ curl -b /tmp/perkly-cookie http://127.0.0.1:3001/api/v1/session
 
 Hosted identity uses Cognito authorization-code with PKCE, separate customer and admin pools, and server-side state, nonce, and verifier. The protocol was tested against a loopback stand-in. There is no AWS account and no hosted Cognito deployment. Naming Cognito does not turn on the fixture login, and hosted mode keeps that route unavailable.
 
+Mutations from the browser send `Origin` exactly equal to `APP_ORIGIN` and, once a session exists, `x-csrf-token` from `GET /api/v1/session`. The cookie is HttpOnly. Another user's id and another business's id do not return that record. A customer-pool session cannot open `GET /api/v1/admin/assurance`.
+
 ## Next task
 
-P02-03. Enforce permission and tenant guards, CSRF, exact Origin, cookie rules, and admin assurance. Do not add checkout or a merchant payment.
+P02-04. Build account, locale, and session-expiry flows. Do not add checkout or a merchant payment.

@@ -23,4 +23,13 @@ export {
   revokeSession,
 } from "./sessions.ts";
 export type { CreatedSession, SessionUser } from "./sessions.ts";
+export {
+  ACCESS_RATE_LIMIT,
+  ACCESS_RATE_WINDOW_SECONDS,
+  AUTH_RATE_LIMIT,
+  AUTH_RATE_WINDOW_SECONDS,
+  adminGrantExists,
+  consumeRateLimit,
+  staffRolesForActor,
+} from "./access.ts";
 export { LOCAL_DEV_DATABASE, LOCAL_TEST_DATABASE, localRoleUrl } from "./local.ts";

@@ -1,4 +1,9 @@
-export { FIXTURE_OUTBOX_MESSAGE, FIXTURE_PROFILES } from "./fixture-profiles.ts";
+export {
+  FIXTURE_BUSINESSES,
+  FIXTURE_MEMBERSHIPS,
+  FIXTURE_OUTBOX_MESSAGE,
+  FIXTURE_PROFILES,
+} from "./fixture-profiles.ts";
 export type { FixtureProfile, FixtureProfileRole } from "./fixture-profiles.ts";
 export {
   EnvironmentConfigError,

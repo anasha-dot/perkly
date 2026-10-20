@@ -1,6 +1,6 @@
 # Perkly architecture
 
-**Status:** Local application through P02-02. Loopback fictional sessions exist. The Cognito authorization-code protocol is implemented and was tested against a loopback identity provider. No hosted Cognito, RDS, or other AWS resource exists.
+**Status:** Local application through P02-03. Loopback fictional sessions, Cognito protocol tests, and server-side permission guards exist. No hosted Cognito, RDS, or other AWS resource exists. Admin MFA was not verified.
 **Date:** 20 October 2026.
 **Source:** `Perkly_From_Scratch_Roadmap.md` version 1.0, sections 4 through 8 and 11.
 **Product rules:** `PRODUCT_SPEC.md`. D-22: Perkly does not charge a merchant product sale. PayPlus is the ₪15 membership provider only. There is no merchant PayPlus terminal. Open: public-offer maximum, PostgreSQL major, discount-code mechanics (O-15), and membership E01.
@@ -22,7 +22,7 @@ Local development must run without an AWS account: native PostgreSQL, a loopback
 | Proposed path | Responsibility | Exists |
 | --- | --- | --- |
 | `apps/web/` | Vue 3, TypeScript, Vite, Vue Router, locale messages, accessible forms, PWA assets | Scaffold. Home screen and `en` / `he` / `ar`. No PWA yet. |
-| `apps/api/` | Express HTTP, input validation, session handling, composition of modules | Health, local sessions, and Cognito login, callback, refresh, and logout. CSRF is not enforced yet. |
+| `apps/api/` | Express HTTP, input validation, session handling, composition of modules | Health, sessions, Cognito protocol routes, CSRF, exact Origin, rate limits, and tenant guards. |
 | `apps/worker/` | Outbox jobs, provider recovery, notifications, reconciliation | Scaffold. Process starts and stays idle. No queue. |
 | `packages/domain/` | Pricing, permissions, order, refund, and membership rules. No network calls | Scaffold. No pricing rules yet. |
 | `packages/contracts/` | Shared schemas and API DTOs. OpenAPI is published from implemented schemas, which do not exist yet | Locale codes and the shell descriptor. No OpenAPI file. |
@@ -50,7 +50,7 @@ Local passwords are non-production and are valid only on loopback. PostgreSQL 17
 
 ## 3. Role matrix
 
-The server enforces this on every route, export, and background action. An actor may hold several roles. Roles do not cross businesses. Client storage cannot grant membership or admin.
+The server enforces this on the account, staff, and admin routes that exist. An actor may hold several roles. A role at one business does not apply to another business. Client storage and a customer-pool token cannot grant admin. Admin assurance is the admin pool plus an `app.admin_grants` row. Hosted admin MFA is still Phase 10.
 
 | Capability | Customer | Cashier | Manager | Business owner | Administrator |
 | --- | --- | --- | --- | --- | --- |

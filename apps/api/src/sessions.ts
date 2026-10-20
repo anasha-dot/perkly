@@ -1,10 +1,15 @@
 import { errorBody } from "@perkly/contracts";
 import {
+  AUTH_RATE_LIMIT,
+  AUTH_RATE_WINDOW_SECONDS,
+  adminGrantExists,
+  consumeRateLimit,
   createLocalFixtureSession,
   findActiveSession,
   revokeSession,
   type SessionUser,
 } from "@perkly/database";
+import { sessionCapabilities } from "@perkly/domain";
 import {
   CognitoProtocolError,
   createLogger,
@@ -13,6 +18,7 @@ import {
 } from "@perkly/integrations";
 import type { Express, Request, Response } from "express";
 import type pg from "pg";
+import { clientAddress, rejectBrowserMutation } from "./request-guards.ts";
 
 const COOKIE_NAME = "perkly_session";
 
@@ -61,6 +67,12 @@ async function createSession(
     response.status(503).json(errorBody("not_ready", requestId));
     return;
   }
+  if (!(await allowAuth(pool, request, response))) {
+    return;
+  }
+  if (rejectBrowserMutation(request, response, config, undefined)) {
+    return;
+  }
   const profileId = readProfileId(request.body);
   if (profileId === undefined) {
     response
@@ -74,7 +86,7 @@ async function createSession(
     return;
   }
   response.setHeader("set-cookie", sessionCookie(created.token, created.expiresAt, config.origin));
-  response.status(201).json(sessionBody(created.user, created.csrfToken));
+  response.status(201).json(await publicSession(pool, created.user, created.csrfToken));
 }
 
 async function readSession(
@@ -93,7 +105,7 @@ async function readSession(
     response.status(401).json(errorBody("no_session", requestId));
     return;
   }
-  response.json(sessionBody(active.user, active.csrfToken));
+  response.json(await publicSession(pool, active.user, active.csrfToken));
 }
 
 async function logout(
@@ -104,6 +116,15 @@ async function logout(
 ): Promise<void> {
   const token = readCookie(request.header("cookie"), COOKIE_NAME);
   if (token !== undefined && pool !== undefined) {
+    const active = await findActiveSession(pool, token);
+    if (active !== undefined) {
+      if (!(await allowAuth(pool, request, response))) {
+        return;
+      }
+      if (rejectBrowserMutation(request, response, config, active.csrfToken)) {
+        return;
+      }
+    }
     const hosted = await revokeSession(pool, token);
     if (hosted !== undefined && config.cognito !== undefined) {
       const poolSettings = config.cognito[hosted.poolName];
@@ -118,11 +139,20 @@ async function logout(
       }
     }
   }
-  response.setHeader("set-cookie", `${COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+  response.setHeader("set-cookie", clearSessionCookie(config.origin));
   response.status(204).end();
 }
 
-export function sessionBody(user: SessionUser, csrfToken: string) {
+export async function publicSession(pool: pg.Pool, user: SessionUser, csrfToken: string) {
+  const adminGranted = user.pool === "admin" ? await adminGrantExists(pool, user.id) : false;
+  return sessionBody(
+    user,
+    csrfToken,
+    sessionCapabilities({ role: user.role, pool: user.pool, adminGranted }),
+  );
+}
+
+export function sessionBody(user: SessionUser, csrfToken: string, capabilities: readonly string[]) {
   return {
     user: {
       id: user.id,
@@ -133,7 +163,7 @@ export function sessionBody(user: SessionUser, csrfToken: string) {
       fixtureProfileId: user.fixtureProfileId,
       pool: user.pool,
     },
-    capabilities: [user.role],
+    capabilities,
     csrfToken,
   };
 }
@@ -158,6 +188,25 @@ export function sessionCookie(token: string, expiresAt: Date, origin: string): s
   const maxAge = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
   const secure = origin.startsWith("https://") ? "; Secure" : "";
   return `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${secure}`;
+}
+
+export function clearSessionCookie(origin: string): string {
+  const secure = origin.startsWith("https://") ? "; Secure" : "";
+  return `${COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}`;
+}
+
+async function allowAuth(pool: pg.Pool, request: Request, response: Response): Promise<boolean> {
+  const allowed = await consumeRateLimit(
+    pool,
+    `auth:${clientAddress(request)}`,
+    AUTH_RATE_LIMIT,
+    AUTH_RATE_WINDOW_SECONDS,
+  );
+  if (!allowed) {
+    response.status(429).json(errorBody("rate_limited", currentRequestId(response)));
+    return false;
+  }
+  return true;
 }
 
 function readCookie(header: string | undefined, name: string): string | undefined {

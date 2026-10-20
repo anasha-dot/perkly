@@ -1,4 +1,10 @@
-import { FIXTURE_OUTBOX_MESSAGE, FIXTURE_PROFILES, loadConfig } from "@perkly/integrations";
+import {
+  FIXTURE_BUSINESSES,
+  FIXTURE_MEMBERSHIPS,
+  FIXTURE_OUTBOX_MESSAGE,
+  FIXTURE_PROFILES,
+  loadConfig,
+} from "@perkly/integrations";
 import { SEARCH_FIXTURES } from "@perkly/search";
 import { createPool } from "./migrate.ts";
 import { assertSafeDatabaseTarget, databaseUrlFromEnv } from "./target.ts";
@@ -9,6 +15,8 @@ export type SeedResult = {
   profiles: number;
   outbox: number;
   searchFixtures: number;
+  businesses: number;
+  memberships: number;
 };
 
 export async function seedLocal(url = databaseUrlFromEnv("seed-local")): Promise<SeedResult> {
@@ -62,6 +70,22 @@ export async function seedLocal(url = databaseUrlFromEnv("seed-local")): Promise
           [fixture.id, fixture.locale, fixture.query, fixture.note],
         );
       }
+      for (const business of FIXTURE_BUSINESSES) {
+        await client.query(
+          `INSERT INTO app.businesses (id, display_name, fictional)
+           VALUES ($1, $2, true)
+           ON CONFLICT (id) DO NOTHING`,
+          [business.id, business.displayName],
+        );
+      }
+      for (const membership of FIXTURE_MEMBERSHIPS) {
+        await client.query(
+          `INSERT INTO app.staff_memberships (id, business_id, role, fixture_profile_id)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (id) DO NOTHING`,
+          [membership.id, membership.businessId, membership.role, membership.profileId],
+        );
+      }
     });
 
     const profiles = await pool.query<{ n: number }>(
@@ -73,11 +97,19 @@ export async function seedLocal(url = databaseUrlFromEnv("seed-local")): Promise
     const searchFixtures = await pool.query<{ n: number }>(
       "SELECT count(*)::int AS n FROM app.search_fixtures",
     );
+    const businesses = await pool.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM app.businesses",
+    );
+    const memberships = await pool.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM app.staff_memberships",
+    );
     return {
       database: "perkly",
       profiles: Number(profiles.rows[0]?.n ?? 0),
       outbox: Number(outbox.rows[0]?.n ?? 0),
       searchFixtures: Number(searchFixtures.rows[0]?.n ?? 0),
+      businesses: Number(businesses.rows[0]?.n ?? 0),
+      memberships: Number(memberships.rows[0]?.n ?? 0),
     };
   } finally {
     await pool.end();

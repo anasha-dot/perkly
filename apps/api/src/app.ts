@@ -9,6 +9,7 @@ import { pingRuntimeDatabase } from "@perkly/database";
 import { randomBytes } from "node:crypto";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import type pg from "pg";
+import { registerAccessRoutes } from "./access-routes.ts";
 import { registerCognitoRoutes } from "./cognito-auth.ts";
 import { registerSessionRoutes } from "./sessions.ts";
 
@@ -63,6 +64,7 @@ export function createApp(
 
   registerSessionRoutes(app, config, options.pool);
   registerCognitoRoutes(app, config, options.pool);
+  registerAccessRoutes(app, config, options.pool);
 
   app.use((_request, response) => {
     response.status(404).json(errorBody("not_found", currentRequestId(response)));

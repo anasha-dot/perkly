@@ -32,6 +32,7 @@ test(
       "0003_audit_events",
       "0004_users_sessions",
       "0005_cognito_identity",
+      "0006_access_control",
     ]);
     assert.match(first.serverVersion, /PostgreSQL 17\./);
     const firstSnapshot = await readSnapshot(target);
@@ -44,6 +45,7 @@ test(
       "0003_audit_events",
       "0004_users_sessions",
       "0005_cognito_identity",
+      "0006_access_control",
     ]);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
 
@@ -55,6 +57,7 @@ test(
       "0003_audit_events",
       "0004_users_sessions",
       "0005_cognito_identity",
+      "0006_access_control",
     ]);
     assert.equal(third.serverVersion, first.serverVersion);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
@@ -129,6 +132,20 @@ test(
         "42501",
       );
       await expectSqlState(
+        runtimePool.query("INSERT INTO app.businesses (id, display_name) VALUES ('x', 'X')"),
+        "42501",
+      );
+      await expectSqlState(
+        runtimePool.query("INSERT INTO app.admin_grants (user_id) VALUES ('missing-user')"),
+        "42501",
+      );
+      await expectSqlState(
+        runtimePool.query(
+          "INSERT INTO app.staff_memberships (id, business_id, role, fixture_profile_id) VALUES ('x', 'x', 'cashier', 'x')",
+        ),
+        "42501",
+      );
+      await expectSqlState(
         migratePool.query("UPDATE app.audit_events SET action = 'changed'"),
         "42501",
       );
@@ -156,6 +173,8 @@ test(
     assert.equal(first.profiles, 5);
     assert.equal(first.outbox, 1);
     assert.equal(first.searchFixtures, 3);
+    assert.equal(first.businesses, 2);
+    assert.equal(first.memberships, 4);
     assert.deepEqual(second, first);
 
     const target = assertSafeDatabaseTarget(url, "seed-local");
@@ -222,7 +241,11 @@ async function demonstrateLocalSessions(pool: pg.Pool): Promise<void> {
 
     const logout = await fetch(`${base}/api/v1/auth/logout`, {
       method: "POST",
-      headers: { cookie: `perkly_session=${staff.token}` },
+      headers: {
+        cookie: `perkly_session=${staff.token}`,
+        origin: "http://127.0.0.1:5173",
+        "x-csrf-token": staff.csrfToken,
+      },
     });
     assert.equal(logout.status, 204);
     const afterLogout = await fetch(`${base}/api/v1/session`, {
@@ -237,10 +260,13 @@ async function demonstrateLocalSessions(pool: pg.Pool): Promise<void> {
 async function openSession(
   base: string,
   profileId: string,
-): Promise<{ token: string; role: string; fictional: boolean; userId: string }> {
+): Promise<{ token: string; csrfToken: string; role: string; fictional: boolean; userId: string }> {
   const response = await fetch(`${base}/api/v1/auth/local/session`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      origin: "http://127.0.0.1:5173",
+    },
     body: JSON.stringify({ profileId }),
   });
   assert.equal(response.status, 201);
@@ -261,7 +287,13 @@ async function openSession(
   assert.equal(session.status, 200);
   const current = (await session.json()) as { user: { role: string; fictional: boolean } };
   assert.equal(current.user.role, body.user.role);
-  return { token, role: body.user.role, fictional: body.user.fictional, userId: body.user.id };
+  return {
+    token,
+    csrfToken: body.csrfToken,
+    role: body.user.role,
+    fictional: body.user.fictional,
+    userId: body.user.id,
+  };
 }
 
 async function readSnapshot(target: ReturnType<typeof assertSafeDatabaseTarget>): Promise<{

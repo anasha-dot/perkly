@@ -1,7 +1,7 @@
 # Perkly project context
 
 **Updated:** 20 October 2026
-**Position:** P02-02 is done. Loopback fictional sessions remain, and the Cognito authorization-code protocol was tested against a loopback identity provider. That is not a hosted Cognito deployment and it is not production authentication. O-03 is open. D-22 is the payment model. No checkout, PayPlus client, or cloud resource exists. Nothing is production-ready.
+**Position:** P02-03 is done. Tenant guards, CSRF, exact Origin, cookie rules, and rate limits are enforced. Admin assurance was tested locally and is not a hosted Cognito deployment. O-03 is open. D-22 is the payment model. No checkout, PayPlus client, or cloud resource exists. Nothing is production-ready.
 
 ## Goals
 
@@ -45,4 +45,4 @@ All of these are in `docs/` next to this file:
 
 ## Next
 
-The next unblocked task is P02-03: permission and tenant guards, CSRF, exact Origin, cookie rules, rate limits, and admin assurance. Hosted Cognito proof waits for Phase 10. Anas’s next payment action is the membership-only E01 questions in `OWNER_SETUP.md`. That work does not block P02-03. P06-02 stays blocked until those answers exist. Do not start Phase 05 as the launch path.
+The next unblocked task is P02-04: account, locale, and session-expiry flows, and protected route states. Hosted Cognito proof waits for Phase 10. Anas’s next payment action is the membership-only E01 questions in `OWNER_SETUP.md`. That work does not block P02-04. P06-02 stays blocked until those answers exist. Do not start Phase 05 as the launch path.

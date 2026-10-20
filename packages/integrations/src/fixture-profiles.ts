@@ -50,6 +50,38 @@ export const FIXTURE_PROFILES: readonly FixtureProfile[] = [
   },
 ];
 
+export const FIXTURE_BUSINESSES = [
+  { id: "fixture-business-north", displayName: "North Fixture" },
+  { id: "fixture-business-south", displayName: "South Fixture" },
+] as const;
+
+export const FIXTURE_MEMBERSHIPS = [
+  {
+    id: "fixture-membership-north-omar",
+    businessId: "fixture-business-north",
+    profileId: "fixture-cashier-omar",
+    role: "cashier",
+  },
+  {
+    id: "fixture-membership-north-lina",
+    businessId: "fixture-business-north",
+    profileId: "fixture-manager-lina",
+    role: "manager",
+  },
+  {
+    id: "fixture-membership-north-samir",
+    businessId: "fixture-business-north",
+    profileId: "fixture-owner-samir",
+    role: "business_owner",
+  },
+  {
+    id: "fixture-membership-south-samir",
+    businessId: "fixture-business-south",
+    profileId: "fixture-owner-samir",
+    role: "cashier",
+  },
+] as const;
+
 export const FIXTURE_OUTBOX_MESSAGE = {
   id: "fixture-outbox-seed",
   profileId: "fixture-customer-nour",

@@ -21,6 +21,7 @@ const result = spawnSync(
     "--test-concurrency=1",
     "tests/integration/database.test.ts",
     "tests/integration/cognito-auth.test.ts",
+    "tests/integration/access-control.test.ts",
   ],
   {
     cwd: root,

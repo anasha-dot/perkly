@@ -475,3 +475,35 @@ npm run check
 ### Next
 
 P02-03. Acceptance: permission and tenant guards, CSRF, exact Origin, Secure and HttpOnly cookie rules, rate limits, staff-role authority, and admin assurance. A customer-pool session must not become an admin grant.
+
+## 2026-10-20 — P02-03 permission guards
+
+**Scope:** Permission and tenant guards, CSRF, exact Origin checks, Secure and HttpOnly cookie rules, rate limits, staff-role authority, and admin assurance. Cross-user and cross-business ids fail. A customer-pool session fails on the admin route. No PayPlus client, checkout, merchant payment, or membership billing was added. No hosted Cognito deployment is claimed. `Perkly_From_Scratch_Roadmap.md` was not rewritten.
+
+**Observable result:** `GET /api/v1/users/:userId` for another user returns 404 and does not include that user's email. A cashier of `fixture-business-north` receives 404 for `fixture-business-south` with no business display name. The same cashier's invite is 403 `not_allowed` even when the body says `business_owner`. The north owner receives 403 `not_in_this_build` because invitations are not built. Samir is a cashier of the south fixture, so that role does not grant the north owner's invite. Mutations require `Origin` equal to `APP_ORIGIN`. An active logout or staff invite also requires `x-csrf-token`. A failed check does not revoke the session. Cookies are HttpOnly and `SameSite=Lax`, and Secure when the origin is https. A bearer header is not a session. `GET /api/v1/admin/assurance` is 403 for a customer-pool session after an `app.admin_grants` insert, and 200 `{ "assured": true }` for an admin-pool session with that grant. The runtime role cannot insert businesses, memberships, or grants. Access routes return 429 `rate_limited` after 60 hits in a minute.
+
+### Commands and results
+
+Node.js 24.22.0. Local PostgreSQL 17 was already healthy. There is no AWS account.
+
+```text
+npm run test:unit
+npm run test:smoke:database
+npm run test:integration
+npm run test:e2e
+npm run check
+```
+
+`test:unit` passed 40 tests. `test:smoke:database` passed and applied `0006_access_control`. `test:integration` passed 4 tests, including the tenant, CSRF, Origin, rate-limit, and customer-pool admin cases. `test:e2e` passed. `npm run check` passed: typecheck, lint, Prettier, and the same 40 unit tests.
+
+### Unresolved
+
+- Staff invitations, merchant applications, and account editing are not built. The owner invite returns `not_in_this_build`.
+- Admin MFA was not verified. There is no hosted Cognito deployment.
+- Session expiry and the account UI are P02-04.
+- O-03 stays open. AT01–AT34 were not run. The app is not production-ready.
+- E01–E09 stay pending. D-22 is unchanged. No merchant payment was added.
+
+### Next
+
+P02-04. Acceptance: account, profile, and session-expiry flows, language preference, authentication UI, and protected route states. An expired browser session cannot silently submit a purchase under another identity.

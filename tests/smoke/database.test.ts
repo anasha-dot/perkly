@@ -20,6 +20,7 @@ test("native postgres smoke migrates the disposable database", { timeout: 60_000
   assert.ok(migrated.applied.includes("0003_audit_events"));
   assert.ok(migrated.applied.includes("0004_users_sessions"));
   assert.ok(migrated.applied.includes("0005_cognito_identity"));
+  assert.ok(migrated.applied.includes("0006_access_control"));
 
   const pool = createPool("runtime", target);
   try {
