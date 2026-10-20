@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
-import { EnvironmentConfigError, loadConfig } from "@perkly/integrations";
+import { EnvironmentConfigError, loadConfig, publicConfigSummary } from "@perkly/integrations";
 
 const hostedDatabase = "postgres://perkly_runtime:pw@db.internal:5432/perkly?sslmode=verify-full";
 
@@ -31,6 +31,9 @@ test("hosted mode accepts real adapter names and does not require AWS credential
   assert.equal(config.adapters.email, "ses");
   assert.equal(config.adapters.search, "filters");
   assert.equal(config.adapters.payment, "disabled");
+  assert.notEqual(config.cognito?.customer.issuer, config.cognito?.admin.issuer);
+  assert.notEqual(config.cognito?.customer.clientId, config.cognito?.admin.clientId);
+  assert.equal(JSON.stringify(publicConfigSummary(config)).includes("example.test"), false);
 });
 
 test("hosted mode rejects demo identity, the outbox, fixture search, and simulator payments", () => {
@@ -82,6 +85,8 @@ test("a hosted api process with a valid adapter set starts without AWS credentia
   assert.match(output, /"identity":"cognito"/);
   assert.match(output, /"search":"bedrock"/);
   assert.doesNotMatch(output, /amazonaws/);
+  assert.doesNotMatch(output, /example\.test/);
+  assert.doesNotMatch(output, /customer-pool-example/);
 });
 
 test("hosted startup with demo adapters exits before listening", () => {
@@ -138,9 +143,53 @@ function hostedEnv(extra: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     SEARCH_PROVIDER: "filters",
     IMAGE_PROVIDER: "s3",
     PAYMENT_PROVIDER: "disabled",
+    COGNITO_CUSTOMER_POOL_ID: "customer-pool-example",
+    COGNITO_CUSTOMER_CLIENT_ID: "customer-client-example",
+    COGNITO_CUSTOMER_ISSUER: "https://customer.example.test/customer",
+    COGNITO_CUSTOMER_HOSTED_UI: "https://customer.example.test",
+    COGNITO_ADMIN_POOL_ID: "admin-pool-example",
+    COGNITO_ADMIN_CLIENT_ID: "admin-client-example",
+    COGNITO_ADMIN_ISSUER: "https://admin.example.test/admin",
+    COGNITO_ADMIN_HOSTED_UI: "https://admin.example.test",
+    COGNITO_REDIRECT_URI: "https://perkly.example.com/api/v1/auth/callback",
     ...extra,
   };
 }
+
+test("Cognito settings require two separate pools and are not contacted at startup", () => {
+  assert.throws(
+    () => loadConfig(hostedEnv({ COGNITO_ADMIN_POOL_ID: "" })),
+    /not a hosted deployment/,
+  );
+  assert.throws(
+    () => loadConfig(hostedEnv({ COGNITO_ADMIN_ISSUER: "https://customer.example.test/customer" })),
+    /must be separate/,
+  );
+  assert.throws(
+    () => loadConfig(hostedEnv({ COGNITO_CUSTOMER_ISSUER: "http://idp.example.test/customer" })),
+    /must be https/,
+  );
+  assert.throws(
+    () =>
+      loadConfig(
+        hostedEnv({
+          COGNITO_REDIRECT_URI: "https://other.example.com/api/v1/auth/callback",
+        }),
+      ),
+    /APP_ORIGIN/,
+  );
+  const loopback = loadConfig(
+    hostedEnv({
+      COGNITO_CUSTOMER_ISSUER: "http://127.0.0.1:9/customer",
+      COGNITO_CUSTOMER_HOSTED_UI: "http://127.0.0.1:9",
+    }),
+  );
+  assert.equal(loopback.cognito?.customer.issuer, "http://127.0.0.1:9/customer");
+});
+
+test("local mode does not turn a Cognito name into the fixture adapter", () => {
+  assert.throws(() => loadConfig(localEnv({ AUTH_PROVIDER: "cognito" })), /fictional profiles/);
+});
 
 function withoutCloud(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const next: NodeJS.ProcessEnv = {};

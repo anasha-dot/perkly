@@ -111,6 +111,8 @@ curl -b /tmp/perkly-cookie http://127.0.0.1:3001/api/v1/session
 
 `fixture-cashier-omar` opens a staff session the same way. The cookie is HttpOnly. The database stores only its hash. This route is refused unless the server and the client are on loopback, and it is not production authentication.
 
+Hosted identity uses Cognito authorization-code with PKCE, separate customer and admin pools, and server-side state, nonce, and verifier. The protocol was tested against a loopback stand-in. There is no AWS account and no hosted Cognito deployment. Naming Cognito does not turn on the fixture login, and hosted mode keeps that route unavailable.
+
 ## Next task
 
-P02-02. Add Cognito authorization-code with PKCE for hosted identity. Do not add checkout or a merchant payment.
+P02-03. Enforce permission and tenant guards, CSRF, exact Origin, cookie rules, and admin assurance. Do not add checkout or a merchant payment.

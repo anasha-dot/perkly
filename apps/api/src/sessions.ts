@@ -1,6 +1,16 @@
 import { errorBody } from "@perkly/contracts";
-import { createLocalFixtureSession, findActiveSession, revokeSession } from "@perkly/database";
-import type { AppConfig } from "@perkly/integrations";
+import {
+  createLocalFixtureSession,
+  findActiveSession,
+  revokeSession,
+  type SessionUser,
+} from "@perkly/database";
+import {
+  CognitoProtocolError,
+  createLogger,
+  revokeRefreshToken,
+  type AppConfig,
+} from "@perkly/integrations";
 import type { Express, Request, Response } from "express";
 import type pg from "pg";
 
@@ -20,7 +30,7 @@ export function registerSessionRoutes(
   });
 
   app.post("/api/v1/auth/logout", (request, response) => {
-    void logout(request, response, pool);
+    void logout(request, response, config, pool);
   });
 }
 
@@ -89,27 +99,30 @@ async function readSession(
 async function logout(
   request: Request,
   response: Response,
+  config: AppConfig,
   pool: pg.Pool | undefined,
 ): Promise<void> {
   const token = readCookie(request.header("cookie"), COOKIE_NAME);
   if (token !== undefined && pool !== undefined) {
-    await revokeSession(pool, token);
+    const hosted = await revokeSession(pool, token);
+    if (hosted !== undefined && config.cognito !== undefined) {
+      const poolSettings = config.cognito[hosted.poolName];
+      try {
+        await revokeRefreshToken(poolSettings, hosted.refreshToken);
+      } catch (error) {
+        const code = error instanceof CognitoProtocolError ? error.code : "revoke_failed";
+        createLogger("perkly-api").error("cognito_revoke_failed", {
+          requestId: currentRequestId(response),
+          code,
+        });
+      }
+    }
   }
   response.setHeader("set-cookie", `${COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
   response.status(204).end();
 }
 
-function sessionBody(
-  user: {
-    id: string;
-    locale: string;
-    role: string;
-    fictional: true;
-    identityProvider: "local-fixtures";
-    fixtureProfileId: string;
-  },
-  csrfToken: string,
-) {
+export function sessionBody(user: SessionUser, csrfToken: string) {
   return {
     user: {
       id: user.id,
@@ -118,6 +131,7 @@ function sessionBody(
       fictional: user.fictional,
       identityProvider: user.identityProvider,
       fixtureProfileId: user.fixtureProfileId,
+      pool: user.pool,
     },
     capabilities: [user.role],
     csrfToken,
@@ -140,7 +154,7 @@ function readProfileId(body: unknown): string | undefined {
   return profileId;
 }
 
-function sessionCookie(token: string, expiresAt: Date, origin: string): string {
+export function sessionCookie(token: string, expiresAt: Date, origin: string): string {
   const maxAge = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
   const secure = origin.startsWith("https://") ? "; Secure" : "";
   return `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${secure}`;

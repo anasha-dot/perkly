@@ -3,9 +3,27 @@ import { createHash } from "node:crypto";
 import { once } from "node:events";
 import test from "node:test";
 import { createApp } from "../../apps/api/src/app.ts";
-import { localIdentityAllowed } from "../../apps/api/src/sessions.ts";
+import { localIdentityAllowed, sessionCookie } from "../../apps/api/src/sessions.ts";
 import { hashSessionToken } from "@perkly/database";
 import { loadConfig } from "@perkly/integrations";
+
+test("an https origin marks the session cookie Secure", () => {
+  const hosted = sessionCookie(
+    "opaque-token",
+    new Date(Date.now() + 60_000),
+    "https://perkly.example.com",
+  );
+  assert.match(hosted, /HttpOnly/);
+  assert.match(hosted, /Secure/);
+  assert.match(hosted, /SameSite=Lax/);
+  const local = sessionCookie(
+    "opaque-token",
+    new Date(Date.now() + 60_000),
+    "http://127.0.0.1:5173",
+  );
+  assert.match(local, /HttpOnly/);
+  assert.doesNotMatch(local, /Secure/);
+});
 
 test("session hashes do not store the raw token", () => {
   const token = "opaque-token-value";
@@ -43,6 +61,15 @@ test("hosted mode does not expose the local identity route", async () => {
     SEARCH_PROVIDER: "filters",
     IMAGE_PROVIDER: "s3",
     PAYMENT_PROVIDER: "disabled",
+    COGNITO_CUSTOMER_POOL_ID: "customer-pool-example",
+    COGNITO_CUSTOMER_CLIENT_ID: "customer-client-example",
+    COGNITO_CUSTOMER_ISSUER: "https://customer.example.test/customer",
+    COGNITO_CUSTOMER_HOSTED_UI: "https://customer.example.test",
+    COGNITO_ADMIN_POOL_ID: "admin-pool-example",
+    COGNITO_ADMIN_CLIENT_ID: "admin-client-example",
+    COGNITO_ADMIN_ISSUER: "https://admin.example.test/admin",
+    COGNITO_ADMIN_HOSTED_UI: "https://admin.example.test",
+    COGNITO_REDIRECT_URI: "https://perkly.example.com/api/v1/auth/callback",
   });
   const server = createApp(config).listen(0, "127.0.0.1");
   await once(server, "listening");

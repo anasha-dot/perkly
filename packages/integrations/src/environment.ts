@@ -19,12 +19,28 @@ export type AdapterSelection = {
   payment: "disabled";
 };
 
+export type CognitoPoolName = "customer" | "admin";
+
+export type CognitoPoolSettings = {
+  poolId: string;
+  clientId: string;
+  issuer: string;
+  hostedUi: string;
+};
+
+export type CognitoSettings = {
+  customer: CognitoPoolSettings;
+  admin: CognitoPoolSettings;
+  redirectUri: string;
+};
+
 export type AppConfig = {
   mode: AppMode;
   host: string;
   port: number;
   origin: string;
   adapters: AdapterSelection;
+  cognito?: CognitoSettings;
 };
 
 export type PublicConfigSummary = {
@@ -57,7 +73,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     assertHostedDatabaseUrl(read(env, "DATABASE_URL"));
   }
 
-  return { mode, host, port, origin, adapters };
+  const cognito = adapters.identity === "cognito" ? readCognitoSettings(env, origin) : undefined;
+  return cognito === undefined
+    ? { mode, host, port, origin, adapters }
+    : { mode, host, port, origin, adapters, cognito };
 }
 
 export function publicConfigSummary(config: AppConfig): PublicConfigSummary {
@@ -93,6 +112,70 @@ function selectAdapters(env: NodeJS.ProcessEnv, mode: AppMode, host: string): Ad
     images: selectImages(mode, images),
     payment: selectPayment(mode, payment, paymentEnv),
   };
+}
+
+function readCognitoSettings(env: NodeJS.ProcessEnv, appOrigin: string): CognitoSettings {
+  // Store the issuer and hosted UI only. Startup must not contact them.
+  // A passing config is not a hosted Cognito deployment.
+  const customer = readPool(env, "CUSTOMER");
+  const admin = readPool(env, "ADMIN");
+  const redirectUri = read(env, "COGNITO_REDIRECT_URI");
+  if (redirectUri === undefined) {
+    throw new EnvironmentConfigError("Refused: Cognito requires COGNITO_REDIRECT_URI.");
+  }
+  const redirect = parseUrl(redirectUri, "COGNITO_REDIRECT_URI");
+  const origin = parseUrl(appOrigin, "APP_ORIGIN");
+  if (redirect.origin !== origin.origin) {
+    throw new EnvironmentConfigError("Refused: COGNITO_REDIRECT_URI must use APP_ORIGIN.");
+  }
+  if (
+    customer.issuer === admin.issuer ||
+    customer.clientId === admin.clientId ||
+    customer.poolId === admin.poolId
+  ) {
+    throw new EnvironmentConfigError(
+      "Refused: the customer and admin Cognito pools must be separate.",
+    );
+  }
+  return { customer, admin, redirectUri };
+}
+
+function readPool(env: NodeJS.ProcessEnv, name: "CUSTOMER" | "ADMIN"): CognitoPoolSettings {
+  const poolId = read(env, `COGNITO_${name}_POOL_ID`);
+  const clientId = read(env, `COGNITO_${name}_CLIENT_ID`);
+  const issuer = read(env, `COGNITO_${name}_ISSUER`);
+  const hostedUi = read(env, `COGNITO_${name}_HOSTED_UI`);
+  if (
+    poolId === undefined ||
+    clientId === undefined ||
+    issuer === undefined ||
+    hostedUi === undefined
+  ) {
+    throw new EnvironmentConfigError(
+      `Refused: Cognito ${name.toLowerCase()} pool settings are incomplete. This is not a hosted deployment.`,
+    );
+  }
+  assertIssuer(issuer, `COGNITO_${name}_ISSUER`);
+  assertIssuer(hostedUi, `COGNITO_${name}_HOSTED_UI`);
+  return {
+    poolId,
+    clientId,
+    issuer: issuer.replace(/\/$/, ""),
+    hostedUi: hostedUi.replace(/\/$/, ""),
+  };
+}
+
+function assertIssuer(value: string, label: string): void {
+  const url = parseUrl(value, label);
+  const loopback = LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
+  if (loopback && url.protocol === "http:") {
+    return;
+  }
+  if (url.protocol !== "https:") {
+    throw new EnvironmentConfigError(
+      `Refused: ${label} must be https. A loopback http issuer is only for a local protocol test.`,
+    );
+  }
 }
 
 function selectIdentity(

@@ -1,11 +1,11 @@
 # Perkly architecture
 
-**Status:** Design, plus the P01-01 scaffold. The web app, API, and idle worker exist and run locally. No database connection and no cloud resource exist.
+**Status:** Local application through P02-02. Loopback fictional sessions exist. The Cognito authorization-code protocol is implemented and was tested against a loopback identity provider. No hosted Cognito, RDS, or other AWS resource exists.
 **Date:** 20 October 2026.
 **Source:** `Perkly_From_Scratch_Roadmap.md` version 1.0, sections 4 through 8 and 11.
 **Product rules:** `PRODUCT_SPEC.md`. D-22: Perkly does not charge a merchant product sale. PayPlus is the ₪15 membership provider only. There is no merchant PayPlus terminal. Open: public-offer maximum, PostgreSQL major, discount-code mechanics (O-15), and membership E01.
 
-The paths below exist as the P01-01 scaffold. Behavior past the shell, including the database, is a later task.
+Local PostgreSQL migrations through `0005_cognito_identity` exist. Hosted deployment is still a later task.
 
 ## 1. Shape
 
@@ -22,16 +22,16 @@ Local development must run without an AWS account: native PostgreSQL, a loopback
 | Proposed path | Responsibility | Exists |
 | --- | --- | --- |
 | `apps/web/` | Vue 3, TypeScript, Vite, Vue Router, locale messages, accessible forms, PWA assets | Scaffold. Home screen and `en` / `he` / `ar`. No PWA yet. |
-| `apps/api/` | Express HTTP, input validation, session handling, composition of modules | Scaffold. `GET /api/v1` only. |
+| `apps/api/` | Express HTTP, input validation, session handling, composition of modules | Health, local sessions, and Cognito login, callback, refresh, and logout. CSRF is not enforced yet. |
 | `apps/worker/` | Outbox jobs, provider recovery, notifications, reconciliation | Scaffold. Process starts and stays idle. No queue. |
 | `packages/domain/` | Pricing, permissions, order, refund, and membership rules. No network calls | Scaffold. No pricing rules yet. |
 | `packages/contracts/` | Shared schemas and API DTOs. OpenAPI is published from implemented schemas, which do not exist yet | Locale codes and the shell descriptor. No OpenAPI file. |
-| `packages/database/` | Connections, repositories, transactions, numbered migrations, runtime grants | Local migration runner, transaction helper, and role split. No product tables yet. |
-| `packages/integrations/` | Adapters for payment, identity, email, object storage, and search/AI | Scaffold. No provider client. |
+| `packages/database/` | Connections, repositories, transactions, numbered migrations, runtime grants | Migrations through `0005_cognito_identity`, including users, sessions, and OAuth flows. |
+| `packages/integrations/` | Adapters for payment, identity, email, object storage, and search/AI | Adapter selection and the Cognito protocol. No payment client. No hosted provider is deployed. |
 | `packages/search/` | Intent schema, fact matching, straight-line distance, evaluation fixtures | Scaffold. No search. |
 | `infra/` | CDK stacks and environment context, when E03 authorizes them | Local Compose only. No CDK stack. |
 | `scripts/` | Setup, migrate, seed, check, and release tooling | `db:migrate` and `db:reset:test` run against loopback. Seed writes fictional local rows only. |
-| `tests/` | Unit, integration, concurrency, contract, and browser tests | Locale unit tests, target guards, and one disposable-database migration test. |
+| `tests/` | Unit, integration, concurrency, contract, and browser tests | Unit tests, disposable-database tests, the Cognito protocol test, and a browser smoke test. |
 | `docs/` | This design set, task tracking, and future evidence | Phase 00 files, with P01-01 and P01-02 status recorded. |
 
 In local development the web server proxies API calls so the browser sees one origin. In hosting, the compiled Vue app and the API are served from the same HTTPS origin. That keeps session cookies, callbacks, and CSRF on one site. CloudFront is for merchant images, not for sitting in front of the authenticated application, in the initial design.
@@ -280,6 +280,8 @@ Adapters live in `packages/integrations` and `packages/search`. Domain code call
 | Images | Validated local directory | Validated objects in private S3, read by the public through CloudFront origin access control | Private records never use the public media path |
 
 Hosted startup rejects demo identity, simulator payments, and demo search even if the environment file asks for them.
+
+Cognito settings are required when the identity adapter is Cognito. The customer and admin pool ids, client ids, and issuers must differ. A non-loopback issuer must be https. Startup stores those values and does not contact the issuer. Admin pool MFA is a hosted setting and was not verified. The protocol tests use a loopback identity provider and are not a hosted deployment.
 
 The payment interface is the membership capability list in `PAYMENT_CONTRACT.md`. Those names are not a PayPlus API. Do not add a merchant-sale operation to that interface. The adapter, when E01 allows it, is an in-process module. Do not add a second deployed bridge service unless a later design shows a concrete need.
 

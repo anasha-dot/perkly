@@ -10,11 +10,16 @@ export {
 } from "./target.ts";
 export type { DatabasePurpose, SafeDatabaseTarget } from "./target.ts";
 export { withTransaction } from "./transaction.ts";
+export { consumeOAuthFlow, insertOAuthFlow } from "./oauth.ts";
+export type { StoredOAuthFlow } from "./oauth.ts";
 export { pingRuntimeDatabase } from "./readiness.ts";
 export {
+  createCognitoSession,
   createLocalFixtureSession,
   findActiveSession,
   hashSessionToken,
+  readRefreshToken,
+  replaceRefreshToken,
   revokeSession,
 } from "./sessions.ts";
 export type { CreatedSession, SessionUser } from "./sessions.ts";

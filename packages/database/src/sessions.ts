@@ -5,12 +5,13 @@ const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 export type SessionUser = {
   id: string;
-  fixtureProfileId: string;
+  fixtureProfileId: string | null;
   email: string;
   locale: string;
   role: string;
-  fictional: true;
-  identityProvider: "local-fixtures";
+  fictional: boolean;
+  identityProvider: "local-fixtures" | "cognito";
+  pool: "customer" | "admin" | null;
 };
 
 export type CreatedSession = {
@@ -84,6 +85,7 @@ export async function createLocalFixtureSession(
       role: row.profile_role,
       fictional: true,
       identityProvider: "local-fixtures",
+      pool: null,
     },
   };
 }
@@ -95,12 +97,15 @@ export async function findActiveSession(
   const found = await pool.query<{
     csrf_token: string;
     id: string;
-    fixture_profile_id: string;
+    fixture_profile_id: string | null;
     email: string;
     locale: string;
     profile_role: string;
+    identity_provider: "local-fixtures" | "cognito";
+    pool: "customer" | "admin" | null;
   }>(
-    `SELECT sessions.csrf_token, users.id, users.fixture_profile_id, users.email, users.locale, users.profile_role
+    `SELECT sessions.csrf_token, users.id, users.fixture_profile_id, users.email, users.locale,
+            users.profile_role, users.identity_provider, users.pool
      FROM app.sessions AS sessions
      JOIN app.users AS users ON users.id = sessions.user_id
      WHERE sessions.token_hash = $1
@@ -120,17 +125,151 @@ export async function findActiveSession(
       email: row.email,
       locale: row.locale,
       role: row.profile_role,
-      fictional: true,
-      identityProvider: "local-fixtures",
+      fictional: row.identity_provider === "local-fixtures",
+      identityProvider: row.identity_provider,
+      pool: row.pool,
     },
   };
 }
 
-export async function revokeSession(pool: pg.Pool, token: string): Promise<void> {
+export async function revokeSession(
+  pool: pg.Pool,
+  token: string,
+): Promise<{ refreshToken: string; poolName: "customer" | "admin" } | undefined> {
+  const revoked = await pool.query<{
+    refresh_token: string | null;
+    pool: "customer" | "admin" | null;
+  }>(
+    `WITH target AS (
+       SELECT sessions.id, sessions.refresh_token, users.pool
+       FROM app.sessions AS sessions
+       JOIN app.users AS users ON users.id = sessions.user_id
+       WHERE sessions.token_hash = $1 AND sessions.revoked_at IS NULL
+       FOR UPDATE OF sessions
+     )
+     UPDATE app.sessions AS sessions
+     SET revoked_at = now(), refresh_token = NULL
+     FROM target
+     WHERE sessions.id = target.id
+     RETURNING target.refresh_token, target.pool`,
+    [hashSessionToken(token)],
+  );
+  const row = revoked.rows[0];
+  if (
+    row === undefined ||
+    row.refresh_token === null ||
+    row.refresh_token === "" ||
+    row.pool === null
+  ) {
+    return undefined;
+  }
+  return { refreshToken: row.refresh_token, poolName: row.pool };
+}
+
+export async function createCognitoSession(
+  pool: pg.Pool,
+  input: {
+    subject: string;
+    email: string;
+    poolName: "customer" | "admin";
+    refreshToken: string;
+  },
+): Promise<CreatedSession> {
+  const role = input.poolName === "admin" ? "admin_pool" : "customer";
+  const userId = randomUUID();
+  const inserted = await pool.query<{ id: string }>(
+    `INSERT INTO app.users (
+       id, email, locale, profile_role, identity_provider, subject, pool, email_verified_at
+     ) VALUES ($1, $2, 'en', $3, 'cognito', $4, $5, now())
+     ON CONFLICT (pool, subject) DO NOTHING
+     RETURNING id`,
+    [userId, input.email, role, input.subject, input.poolName],
+  );
+  const storedUserId =
+    inserted.rows[0]?.id ??
+    (
+      await pool.query<{ id: string }>(
+        "SELECT id FROM app.users WHERE pool = $1 AND subject = $2",
+        [input.poolName, input.subject],
+      )
+    ).rows[0]?.id;
+  if (storedUserId === undefined) {
+    throw new Error("The Cognito user row was not stored.");
+  }
+  const token = randomBytes(32).toString("base64url");
+  const csrfToken = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  await pool.query(
+    `INSERT INTO app.sessions (id, user_id, token_hash, csrf_token, expires_at, refresh_token)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [
+      randomUUID(),
+      storedUserId,
+      hashSessionToken(token),
+      csrfToken,
+      expiresAt,
+      input.refreshToken === "" ? null : input.refreshToken,
+    ],
+  );
+  return {
+    token,
+    csrfToken,
+    expiresAt,
+    user: {
+      id: storedUserId,
+      fixtureProfileId: null,
+      email: input.email,
+      locale: "en",
+      role,
+      fictional: false,
+      identityProvider: "cognito",
+      pool: input.poolName,
+    },
+  };
+}
+
+export async function readRefreshToken(
+  pool: pg.Pool,
+  token: string,
+): Promise<{ refreshToken: string; poolName: "customer" | "admin"; subject: string } | undefined> {
+  const found = await pool.query<{
+    refresh_token: string | null;
+    pool: "customer" | "admin";
+    subject: string;
+  }>(
+    `SELECT sessions.refresh_token, users.pool, users.subject
+     FROM app.sessions AS sessions
+     JOIN app.users AS users ON users.id = sessions.user_id
+     WHERE sessions.token_hash = $1
+       AND sessions.revoked_at IS NULL
+       AND sessions.expires_at > now()
+       AND users.identity_provider = 'cognito'`,
+    [hashSessionToken(token)],
+  );
+  const row = found.rows[0];
+  if (
+    row === undefined ||
+    row.refresh_token === null ||
+    row.refresh_token === "" ||
+    row.subject === null
+  ) {
+    return undefined;
+  }
+  return { refreshToken: row.refresh_token, poolName: row.pool, subject: row.subject };
+}
+
+export async function replaceRefreshToken(
+  pool: pg.Pool,
+  token: string,
+  refreshToken: string,
+): Promise<void> {
+  if (refreshToken === "") {
+    return;
+  }
   await pool.query(
     `UPDATE app.sessions
-     SET revoked_at = now()
+     SET refresh_token = $2
      WHERE token_hash = $1 AND revoked_at IS NULL`,
-    [hashSessionToken(token)],
+    [hashSessionToken(token), refreshToken],
   );
 }

@@ -31,6 +31,7 @@ test(
       "0002_local_fixtures",
       "0003_audit_events",
       "0004_users_sessions",
+      "0005_cognito_identity",
     ]);
     assert.match(first.serverVersion, /PostgreSQL 17\./);
     const firstSnapshot = await readSnapshot(target);
@@ -42,6 +43,7 @@ test(
       "0002_local_fixtures",
       "0003_audit_events",
       "0004_users_sessions",
+      "0005_cognito_identity",
     ]);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
 
@@ -52,6 +54,7 @@ test(
       "0002_local_fixtures",
       "0003_audit_events",
       "0004_users_sessions",
+      "0005_cognito_identity",
     ]);
     assert.equal(third.serverVersion, first.serverVersion);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
@@ -208,7 +211,10 @@ async function demonstrateLocalSessions(pool: pg.Pool): Promise<void> {
     assert.notEqual(staff.token, customer.token);
 
     const stored = await pool.query<{ token_hash: string }>(
-      "SELECT token_hash FROM app.sessions WHERE user_id = $1",
+      `SELECT token_hash FROM app.sessions
+       WHERE user_id = $1 AND revoked_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 1`,
       [staff.userId],
     );
     assert.equal(stored.rows[0]?.token_hash, hashSessionToken(staff.token));

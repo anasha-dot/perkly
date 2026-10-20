@@ -443,3 +443,35 @@ DATABASE_URL=postgres://perkly_runtime:perkly_local_runtime@127.0.0.1:5432/perkl
 ### Next
 
 P02-02. Acceptance: Cognito authorization-code with PKCE, state, nonce, refresh, and logout, plus a separate admin pool. Hosted proof waits for Phase 10.
+
+## 2026-10-20 — P02-02 Cognito authorization-code
+
+**Scope:** Cognito authorization-code with PKCE, server-side state and nonce, verified identity claims, refresh, logout, and a separate admin pool configuration. Protocol failures were tested against a loopback identity provider. No AWS account exists, and this is not a hosted Cognito deployment. No PayPlus client, checkout, merchant payment, or membership billing was added. The loopback fixture adapter stays unavailable in hosted mode. `Perkly_From_Scratch_Roadmap.md` was not rewritten.
+
+**Observable result:** `GET /api/v1/auth/login?pool=customer` redirects to the customer hosted UI with `response_type=code`, S256 PKCE, state, and nonce. The database stores hashes of the state, nonce, and verifier. The callback clears the verifier, checks the issuer, audience, expiry, nonce, and `email_verified`, and sets an HttpOnly `perkly_session` cookie. `app.sessions.token_hash` is the SHA-256 of that cookie. The session JSON has `pool: customer`, `fictional: false`, and no refresh token. The same flow with `pool=admin` returns role `admin_pool` and does not change the customer session. A customer-issuer token on an admin callback returns `issuer_mismatch`. Reused state, a bad verifier, an unverified email, and an expired token fail. Refresh rotates the stored refresh token without returning it. A changed subject returns `identity_mismatch` and ends the session. Logout revokes the refresh token at the provider and still returns 204 when that call fails. `POST /api/v1/auth/local/session` on that configuration returns 404 `local_identity_unavailable`.
+
+### Commands and results
+
+Node.js 24.22.0. Local PostgreSQL 17 was already healthy. There is no AWS account.
+
+```text
+npm run test:unit
+npm run test:smoke:database
+npm run test:integration
+npm run test:e2e
+npm run check
+```
+
+`test:unit` passed 36 tests, including PKCE, claim failures, signature failure, separate pool settings, and hosted startup that does not contact the issuers. `test:smoke:database` passed and applied `0005_cognito_identity`. `test:integration` passed 3 tests. The Cognito test covered customer and admin login, issuer mismatch, nonce mismatch, unverified email, expiry, bad PKCE, reused and expired state, refresh success and failure, subject mismatch, logout revoke, and logout when revoke fails. `test:e2e` passed. `npm run check` passed: typecheck, lint, Prettier, and the same 36 unit tests.
+
+### Unresolved
+
+- No hosted Cognito user pool was deployed or called. Admin MFA was not verified. That proof is Phase 10.
+- CSRF is returned on the session but not enforced on mutations. That is P02-03.
+- `admin_pool` records which pool issued the session. It is not an application permission grant.
+- O-03 stays open. AT01–AT34 were not run. The app is not production-ready.
+- E01–E09 stay pending. D-22 is unchanged. No merchant payment was added.
+
+### Next
+
+P02-03. Acceptance: permission and tenant guards, CSRF, exact Origin, Secure and HttpOnly cookie rules, rate limits, staff-role authority, and admin assurance. A customer-pool session must not become an admin grant.

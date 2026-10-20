@@ -6,8 +6,28 @@ export {
   localFixtureCount,
   publicConfigSummary,
 } from "./environment.ts";
-export type { AdapterSelection, AppConfig, AppMode, PublicConfigSummary } from "./environment.ts";
+export type {
+  AdapterSelection,
+  AppConfig,
+  AppMode,
+  CognitoPoolName,
+  CognitoPoolSettings,
+  CognitoSettings,
+  PublicConfigSummary,
+} from "./environment.ts";
 
+export {
+  CognitoProtocolError,
+  assertVerifiedIdentity,
+  authorizeUrl,
+  createPkce,
+  exchangeAuthorizationCode,
+  refreshTokens,
+  revokeRefreshToken,
+  sha256Hex,
+  verifyIdToken,
+} from "./cognito-protocol.ts";
+export type { PkcePair, VerifiedIdentity } from "./cognito-protocol.ts";
 export { clientErrorLog, createLogger, redact } from "./log.ts";
 export type { LogFields, LogLevel } from "./log.ts";
 

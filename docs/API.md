@@ -1,6 +1,6 @@
 # Perkly HTTP API
 
-**Status:** Proposed contract, plus one implemented shell route. No OpenAPI document has been generated. Product routes below are not implemented.
+**Status:** Proposed contract, plus the implemented shell, health, local session, and Cognito protocol routes. No OpenAPI document has been generated. Routes below that are not marked implemented are not implemented.
 
 **D-22:** Do not implement a route that charges, captures, refunds, or settles a merchant product sale. PayPlus, if later called, is only the ₪15 membership on Perkly’s own terminal. Cashier-bill payment and merchant checkout are `deferred_by_owner`. Discount-code mechanics are not specified.
 **Prefix:** `/api/v1`
@@ -48,22 +48,34 @@ Proposed status mapping, to be confirmed when handlers exist: `400` validation, 
 
 | Method and path | Proposal status | Contract |
 | --- | --- | --- |
-| `GET /api/v1/session` | Implemented for the local adapter | Returns the current fictional user, role capability, and CSRF token. No session secret and no provider secret. Missing or expired cookies return 401 `no_session`. |
-| `POST /api/v1/auth/local/session` | Local only | Body `{ "profileId" }` must be one fictional fixture profile. Loopback local mode only. Sets an HttpOnly `perkly_session` cookie. The raw token is not stored and is not in the JSON body. Hosted mode returns 404 `local_identity_unavailable`. |
-| `POST /api/v1/auth/logout` | Implemented for the local adapter | Revokes the server session and clears the cookie. |
-| Hosted login and callback | Required by the roadmap; path strings not fixed there | Application routes that start the identity provider and receive the callback. Proposed names: `GET /api/v1/auth/login` and `GET /api/v1/auth/callback`. They are Perkly routes, not a vendor API. PKCE, state, and nonce are server-side. |
+| `GET /api/v1/session` | Implemented | Returns the current user, role, pool, and CSRF token. No session secret, refresh token, or provider token. Missing or expired cookies return 401 `no_session`. |
+| `POST /api/v1/auth/local/session` | Local only | Body `{ "profileId" }` must be one fictional fixture profile. Loopback local mode only. Sets an HttpOnly `perkly_session` cookie. The raw token is not stored and is not in the JSON body. Hosted mode, and any configuration whose identity adapter is not the loopback fixture adapter, returns 404 `local_identity_unavailable`. |
+| `GET /api/v1/auth/login` | Implemented | Starts Cognito authorization-code with PKCE. `pool` is `customer` or `admin`; a missing pool means customer. State, nonce, and the PKCE verifier stay on the server. The response redirects to that pool's hosted UI. Without Cognito settings the route is 404 `cognito_not_configured`. Without a database it is 503 `not_ready`. |
+| `GET /api/v1/auth/callback` | Implemented | Consumes the stored flow, checks the verifier, issuer, audience, expiry, nonce, and verified email, then sets the HttpOnly session cookie. Reused, expired, or unknown state is 400 `oauth_state_invalid`. A customer-pool token cannot complete an admin login. |
+| `POST /api/v1/auth/refresh` | Implemented | Uses the stored refresh token to require a new identity token for the same subject and pool. The JSON body is the session shape. It does not include the refresh token or the identity token. A changed subject returns 401 `identity_mismatch` and revokes the session. |
+| `POST /api/v1/auth/logout` | Implemented | Revokes the server session and clears the cookie. When a Cognito refresh token is stored, Perkly asks that pool to revoke it and does not log the token. Provider revoke failure still returns 204. |
 
-`GET /api/v1/session` response shape, proposed:
+`GET /api/v1/session` response shape:
 
 ```json
 {
-  "user": { "id": "internal-id", "locale": "ar" },
+  "user": {
+    "id": "internal-id",
+    "locale": "en",
+    "role": "customer",
+    "fictional": false,
+    "identityProvider": "cognito",
+    "fixtureProfileId": null,
+    "pool": "customer"
+  },
   "capabilities": ["customer"],
   "csrfToken": "opaque"
 }
 ```
 
-The user id is Perkly's immutable id. The response does not include an access token for the browser to reuse against a provider.
+The user id is Perkly's immutable id. The response does not include an access token, identity token, or refresh token. `pool` is `customer` or `admin` for Cognito, and null for a loopback fixture session. `admin_pool` in `capabilities` means the session came from the admin pool. It is not an application permission grant. Those guards are P02-03. CSRF is returned and is not enforced yet. An https application origin marks the cookie `Secure`.
+
+The refresh token is stored only until logout because the provider requires the raw token on refresh and revoke. It is not the session cookie and it is not hashed. State and nonce are stored only as SHA-256 hashes. The PKCE verifier is kept until the callback consumes the flow, then cleared. Its hash remains.
 
 ## 3. Discovery
 

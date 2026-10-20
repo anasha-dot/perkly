@@ -14,13 +14,22 @@ try {
   process.exit(1);
 }
 
-const result = spawnSync(process.execPath, ["--test", "tests/integration/database.test.ts"], {
-  cwd: root,
-  stdio: "inherit",
-  env: {
-    ...process.env,
-    DATABASE_URL: url,
+const result = spawnSync(
+  process.execPath,
+  [
+    "--test",
+    "--test-concurrency=1",
+    "tests/integration/database.test.ts",
+    "tests/integration/cognito-auth.test.ts",
+  ],
+  {
+    cwd: root,
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      DATABASE_URL: url,
+    },
   },
-});
+);
 
 process.exit(result.status ?? 1);
