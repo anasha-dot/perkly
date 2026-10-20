@@ -343,7 +343,7 @@ Exit 0. The process was not root.
 
 ### Unresolved
 
-- The GitHub Actions workflow is in the repository. This session did not wait for the hosted run.
+- GitHub Actions run 39412383692 on `perkly/foundation` passed: `check`, `database`, `browser`, and `container`.
 - O-03 stays open. The API still does not connect to PostgreSQL on startup.
 - AT01–AT34 were not run. The app is not production-ready.
 - E01–E09 stay pending. D-22 is unchanged. No merchant payment was added.

@@ -118,7 +118,7 @@
       "owner": "bot",
       "evidence": [
         ".github/workflows/ci.yml runs check, build, the native Postgres smoke, the browser smoke, and the non-root image.",
-        "npm run test:smoke:database, npm run test:e2e, npm run build, and sh scripts/check-container.sh passed. The container user was uid 1000.",
+        "npm run test:smoke:database, npm run test:e2e, npm run build, and sh scripts/check-container.sh passed. The container user was uid 1000. GitHub Actions run 39412383692 passed the same four jobs.",
         "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-04. package-lock.json is committed."
       ],
       "blocker": null,
