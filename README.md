@@ -16,7 +16,10 @@ The API does not open a database connection yet. PostgreSQL is started separatel
 
 ```bash
 nvm use
-npm install
+npm ci
+docker compose -f infra/docker-compose.yml up -d --wait
+npm run db:migrate
+npm run db:seed:local
 npm run dev
 ```
 
@@ -40,13 +43,18 @@ npm run start:worker
 ## Checks
 
 ```bash
-npm run typecheck
 npm run check
 npm run build
-npm run test:unit
+npm run test:smoke:database
+npm run test:integration
+npx playwright install chromium
+npm run test:e2e
+npm run check:container
 ```
 
-`npm run check` runs the typecheck, lint, format check, and unit tests.
+`npm run check` runs the typecheck, lint, format check, and unit tests. `test:smoke:database` migrates the disposable database on real PostgreSQL. `test:e2e` opens the home screen in Chromium, checks English, then Hebrew right to left. `check:container` builds `infra/Dockerfile` and runs it as the image's `node` user.
+
+GitHub Actions in `.github/workflows/ci.yml` runs the same checks.
 
 ## Database
 
@@ -67,7 +75,7 @@ npm run test:integration
 
 `db:reset:test` drops and recreates only `perkly_test`. `test:integration` does the same, then migrates it. Both refuse a hosted host, `APP_MODE=staging` or `production`, and any database name other than `perkly_test`.
 
-`db:seed:local` accepts only the loopback dev database. It writes fictional profiles, search fixtures, and one outbox row, and it does not send mail. A second run does not duplicate those rows. `test:e2e` is not implemented.
+`db:seed:local` accepts only the loopback dev database. It writes fictional profiles, search fixtures, and one outbox row, and it does not send mail. A second run does not duplicate those rows.
 
 Local passwords are in `infra/docker-compose.yml` and `packages/database/src/local.ts`. They are not for a hosted database.
 
@@ -75,23 +83,23 @@ The migration role owns the schema. The runtime role can read the foundation mar
 
 ## Layout
 
-| Path                     | What it is in this build                                                  |
-| ------------------------ | ------------------------------------------------------------------------- |
-| `apps/web/`              | Vue 3, TypeScript, and Vite. One home screen and the locale files.        |
-| `apps/api/`              | Express API. One route, `GET /api/v1`.                                    |
-| `apps/worker/`           | Worker process. It starts and waits.                                      |
-| `packages/domain/`       | Place for pricing and permission rules. No rules yet.                     |
-| `packages/contracts/`    | Shared locale and service-descriptor types.                               |
-| `packages/database/`     | Migration runner, transaction helper, and local role split.               |
-| `packages/integrations/` | Place for adapters. No provider client.                                   |
-| `packages/search/`       | Place for search. No model client.                                        |
-| `infra/`                 | Local PostgreSQL Compose. No CDK stack.                                   |
-| `scripts/`               | Local dev, and the integration test guard.                                |
-| `tests/`                 | Locale and database-target unit tests, plus one disposable-database test. |
-| `docs/`                  | Product rules, decisions, and task tracking.                              |
+| Path                     | What it is in this build                                            |
+| ------------------------ | ------------------------------------------------------------------- |
+| `apps/web/`              | Vue 3, TypeScript, and Vite. One home screen and the locale files.  |
+| `apps/api/`              | Express API. One route, `GET /api/v1`.                              |
+| `apps/worker/`           | Worker process. It starts and waits.                                |
+| `packages/domain/`       | Place for pricing and permission rules. No rules yet.               |
+| `packages/contracts/`    | Shared locale and service-descriptor types.                         |
+| `packages/database/`     | Migration runner, transaction helper, and local role split.         |
+| `packages/integrations/` | Adapter selection. No payment client.                               |
+| `packages/search/`       | Local search fixtures. No model client.                             |
+| `infra/`                 | Local PostgreSQL Compose and the non-root API image. No CDK stack.  |
+| `scripts/`               | Local dev, test guards, and the container run check.                |
+| `tests/`                 | Unit tests, a native Postgres smoke test, and a browser smoke test. |
+| `docs/`                  | Product rules, decisions, and task tracking.                        |
 
 Shell wording in Hebrew and Arabic has not had native-speaker review.
 
 ## Next task
 
-P01-04. Add CI, smoke tests, a browser smoke test, and a non-root container check. P01-05 can also start. Do not add checkout or a merchant payment.
+P01-05. Add redacted logs, request IDs, the error schema, health and shutdown, and the append-only audit grants. Do not add checkout or a merchant payment.

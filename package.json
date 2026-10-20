@@ -20,7 +20,9 @@
     "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --pretty false --noEmit && npm run typecheck -w @perkly/web",
     "test:unit": "node --test tests/unit/*.test.ts",
     "test:integration": "node scripts/test-integration.ts",
-    "test:e2e": "node scripts/not-implemented.mjs test:e2e",
+    "test:smoke:database": "node scripts/test-smoke-database.ts",
+    "test:e2e": "playwright test",
+    "check:container": "sh scripts/check-container.sh",
     "build": "tsc -b --pretty false && npm run build -w @perkly/web",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test:unit",
     "start:api": "npm run start -w @perkly/api",
@@ -30,6 +32,7 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@eslint/js": "10.0.1",
     "@types/node": "24.19.2",
     "eslint": "10.13.0",

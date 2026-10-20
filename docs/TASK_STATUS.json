@@ -3,8 +3,8 @@
   "projectOrigin": "empty_repository",
   "updatedAt": "2026-10-20",
   "releaseState": "local",
-  "nextUnblockedTask": "P01-04",
-  "note": "P01-01, P01-02, and P01-03 are done. Local mode selects fictional profiles, the email outbox, and search fixtures without AWS. Hosted mode rejects those demo adapters and simulator payments. Payment stays disabled. D-22 still holds: Perkly does not charge a merchant product sale. No checkout and no PayPlus client were added. Membership billing is not in this build. Phase 05 merchant-sale tasks stay deferred_by_owner. P06-02 stays blocked_external on the membership-only E01. O-03 stays open. P01-05 remains unblocked. The next phase-list task is P01-04.",
+  "nextUnblockedTask": "P01-05",
+  "note": "P01-01 through P01-04 are done. CI runs the unit check, production build, native Postgres smoke, browser smoke, and non-root image. D-22 still holds: Perkly does not charge a merchant product sale. No checkout and no PayPlus client were added. Membership billing is not in this build. Phase 05 merchant-sale tasks stay deferred_by_owner. P06-02 stays blocked_external on the membership-only E01. O-03 stays open. The next unblocked task is P01-05.",
   "tasks": [
     {
       "id": "P00-01",
@@ -107,18 +107,22 @@
         "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-03."
       ],
       "blocker": null,
-      "nextAction": "None. The next phase-list task is P01-04."
+      "nextAction": "None."
     },
     {
       "id": "P01-04",
-      "status": "not_started",
+      "status": "done",
       "dependsOn": [
         "P01-03"
       ],
       "owner": "bot",
-      "evidence": [],
+      "evidence": [
+        ".github/workflows/ci.yml runs check, build, the native Postgres smoke, the browser smoke, and the non-root image.",
+        "npm run test:smoke:database, npm run test:e2e, npm run build, and sh scripts/check-container.sh passed. The container user was uid 1000.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-04. package-lock.json is committed."
+      ],
       "blocker": null,
-      "nextAction": "Add CI, unit and native-database smoke tests, a browser smoke test, a production build, and a non-root container run. Commit lockfiles."
+      "nextAction": "None. The next unblocked task is P01-05."
     },
     {
       "id": "P01-05",

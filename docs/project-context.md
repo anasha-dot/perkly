@@ -1,7 +1,7 @@
 # Perkly project context
 
 **Updated:** 20 October 2026
-**Position:** P01-01 through P01-03 are done. The local shell runs without AWS. Local Compose proposes PostgreSQL 17. O-03 is open. D-22 is the payment model. No checkout, PayPlus client, or cloud resource exists. Nothing is production-ready.
+**Position:** P01-01 through P01-04 are done. The local shell runs without AWS. CI, a Postgres smoke test, a browser smoke test, and a non-root image run are in place. O-03 is open. D-22 is the payment model. No checkout, PayPlus client, or cloud resource exists. Nothing is production-ready.
 
 ## Goals
 
@@ -45,4 +45,4 @@ All of these are in `docs/` next to this file:
 
 ## Next
 
-The next phase-list task is P01-04: CI, smoke tests, a browser smoke test, the production build, and a non-root container check. P01-05 remains unblocked. Anas’s next payment action is the membership-only E01 questions in `OWNER_SETUP.md`. That work does not block P01-04. P06-02 stays blocked until those answers exist. Do not start Phase 05 as the launch path.
+The next unblocked task is P01-05: redacted logs, request IDs, the error schema, health and shutdown, and runtime grants for an append-only audit table. Anas’s next payment action is the membership-only E01 questions in `OWNER_SETUP.md`. That work does not block P01-05. P06-02 stays blocked until those answers exist. Do not start Phase 05 as the launch path.

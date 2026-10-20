@@ -36,7 +36,7 @@ Local development must run without an AWS account: native PostgreSQL, a loopback
 
 In local development the web server proxies API calls so the browser sees one origin. In hosting, the compiled Vue app and the API are served from the same HTTPS origin. That keeps session cookies, callbacks, and CSRF on one site. CloudFront is for merchant images, not for sitting in front of the authenticated application, in the initial design.
 
-Root scripts exist. `db:migrate` applies numbered SQL on loopback database `perkly` or `perkly_test`. `db:reset:test` and `test:integration` accept only loopback `perkly_test`. `db:seed:local` accepts only loopback `perkly` and writes fictional profiles, search fixtures, and one unsent outbox row. All of those commands refuse a hosted host, a hosted `APP_MODE`, and any other database name. `test:e2e` is still not implemented.
+Root scripts exist. `db:migrate` applies numbered SQL on loopback database `perkly` or `perkly_test`. `db:reset:test` and `test:integration` accept only loopback `perkly_test`. `db:seed:local` accepts only loopback `perkly` and writes fictional profiles, search fixtures, and one unsent outbox row. All of those commands refuse a hosted host, a hosted `APP_MODE`, and any other database name. `test:e2e` is a browser smoke test of the home screen. `test:smoke:database` migrates the disposable database.
 
 ### Local database roles
 

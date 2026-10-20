@@ -295,3 +295,59 @@ Refusals, each exit 1:
 ### Next
 
 P01-04. Acceptance: CI, a native-database smoke test, a browser smoke test, a production build, and a non-root container run. P01-05 remains unblocked.
+
+## 2026-10-20 — P01-04 CI and smoke checks
+
+**Scope:** GitHub Actions, a native PostgreSQL smoke test, a browser smoke test, the production build, and a non-root Docker build and run. Lockfile remains committed. No PayPlus client, checkout, merchant payment, or membership billing. `Perkly_From_Scratch_Roadmap.md` was not rewritten.
+
+**Observable result:** `npm run test:smoke:database` migrates disposable `perkly_test` on PostgreSQL 17 and reads the foundation marker as the runtime role. `npm run test:e2e` opens the home screen, sees English and the local API, then Hebrew right to left, and finds no checkout button. `npm run build` writes the web bundle and compiled API. `sh scripts/check-container.sh perkly:local` builds `infra/Dockerfile` from `node:24.22.0-bookworm-slim` and runs it as uid 1000 (`node`). `GET /api/v1` inside that container returns `payment` `disabled`.
+
+### Commands and results
+
+Node.js 24.22.0. Local Compose PostgreSQL was already healthy on 127.0.0.1:5432.
+
+```text
+npm run test:smoke:database
+```
+
+1 passed. `native postgres smoke migrates the disposable database`.
+
+```text
+npm run test:e2e
+```
+
+1 passed. `home screen answers in English and switches to Hebrew right to left` (204ms). Playwright Chromium.
+
+```text
+npm run build
+node apps/api/dist/main.js
+```
+
+Vite wrote `apps/web/dist`. The compiled API listened on 127.0.0.1:34573 and `GET /api/v1` returned local adapters with `payment` `disabled`.
+
+```text
+sh scripts/check-container.sh perkly:local
+```
+
+Image `perkly:local` built from `node:24.22.0-bookworm-slim` (`sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5`). Run check:
+
+- `uid:1000`
+- `id:uid=1000(node) gid=1000(node) groups=1000(node)`
+- body: `{"name":"perkly","apiVersion":"v1","database":"not_connected","mode":"local","adapters":{"identity":"local-fixtures","email":"outbox","search":"fixtures","images":"local","payment":"disabled"}}`
+
+Exit 0. The process was not root.
+
+`npm run check` passed: typecheck, lint, Prettier, and 22 unit tests.
+
+`package-lock.json` includes `@playwright/test` 1.64.1 and is committed with this change.
+
+### Unresolved
+
+- The GitHub Actions workflow is in the repository. This session did not wait for the hosted run.
+- O-03 stays open. The API still does not connect to PostgreSQL on startup.
+- AT01–AT34 were not run. The app is not production-ready.
+- E01–E09 stay pending. D-22 is unchanged. No merchant payment was added.
+
+### Next
+
+P01-05. Acceptance: redacted logs, request IDs, the error schema, health and shutdown, an append-only audit table, and runtime grants that cannot change schema or prior audit rows.
