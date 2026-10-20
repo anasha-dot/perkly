@@ -1,14 +1,11 @@
+import { EnvironmentConfigError, loadConfig } from "@perkly/integrations";
 import { createApp } from "./app.ts";
 
-const port = Number(process.env.PORT ?? "3001");
-const host = process.env.HOST ?? "127.0.0.1";
-
-if (!Number.isInteger(port) || port < 1 || port > 65535) {
-  throw new Error("PORT must be an integer from 1 to 65535.");
-}
-
-const server = createApp().listen(port, host, () => {
-  console.log(`perkly-api listening on http://${host}:${port}`);
+const config = loadStartupConfig();
+const server = createApp(config).listen(config.port, config.host, () => {
+  console.log(
+    `perkly-api listening on http://${config.host}:${config.port} mode=${config.mode} identity=${config.adapters.identity} email=${config.adapters.email} search=${config.adapters.search} payment=${config.adapters.payment}`,
+  );
 });
 
 function shutdown(): void {
@@ -19,3 +16,15 @@ function shutdown(): void {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
+function loadStartupConfig() {
+  try {
+    return loadConfig();
+  } catch (error) {
+    if (error instanceof EnvironmentConfigError) {
+      console.error(error.message);
+      process.exit(1);
+    }
+    throw error;
+  }
+}

@@ -90,6 +90,20 @@ test("reset command rejects a hosted URL and does not print the password", () =>
   assert.doesNotMatch(`${result.stdout}${result.stderr}`, /secret/);
 });
 
+test("seed command rejects a hosted URL and does not print the password", () => {
+  const result = spawnSync(process.execPath, ["packages/database/src/cli.ts", "seed-local"], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      APP_MODE: "local",
+      DATABASE_URL: "postgres://perkly_migrate:secret@203.0.113.20:5432/perkly",
+    },
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Refused/);
+  assert.doesNotMatch(`${result.stdout}${result.stderr}`, /secret/);
+});
+
 test("reset command rejects the dev database", () => {
   const result = spawnSync(process.execPath, ["packages/database/src/cli.ts", "reset-test"], {
     encoding: "utf8",

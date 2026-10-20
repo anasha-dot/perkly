@@ -237,3 +237,61 @@ Reset left `perkly_test` empty. Migrate applied `0001_foundation` again. Checksu
 ### Next
 
 P01-03. Acceptance: local mode runs without AWS, and hosted configuration rejects demo identity, simulator payments, and demo search. P01-05 is also unblocked.
+
+## 2026-10-20 — P01-03 adapters and local seed
+
+**Scope:** Environment validation, adapter selection, and a local-only fictional seed with fixture profiles, search fixtures, and an email outbox. No PayPlus client, no checkout, no merchant payment adapter, and no membership billing. `Perkly_From_Scratch_Roadmap.md` was not rewritten.
+
+**Observable result:** With no AWS credentials, the API starts in local mode and selects fictional profiles, the outbox, fixture search, local images, and disabled payment. A hosted configuration that names Cognito, SES, Bedrock or filters, and S3 also starts without contacting AWS. Hosted startup exits before listening when identity, email, search, or payment is a local or demo adapter. `db:seed:local` writes 5 profiles, 1 outbox row, and 3 search fixtures on loopback `perkly`. A second run keeps those counts. The outbox row says it was not sent. Seed and reset still refuse non-local and non-disposable targets.
+
+### Commands and results
+
+Node.js 24.22.0. PostgreSQL was already the local Compose database from P01-02.
+
+```text
+npm run db:migrate
+```
+
+`database: perkly`, `applied: (none)`, `already_applied: 0001_foundation, 0002_local_fixtures`, exit 0. The new migration had already been applied by the integration test in this session.
+
+```text
+npm run db:seed:local
+npm run db:seed:local
+```
+
+Both exited 0 with `profiles: 5`, `outbox: 1`, `search_fixtures: 3`, and `Fictional rows are local only. The outbox message was not sent.`
+
+`psql` counts on `perkly`: 5 profiles, 1 outbox row (`fixture-outbox-seed`, subject `Local outbox only`), 3 search fixtures.
+
+```text
+PORT=34572 npm run start:api
+```
+
+Listened without AWS settings. `GET /api/v1` returned `mode` `local`, adapters `local-fixtures`, `outbox`, `fixtures`, `local`, and `payment` `disabled`, with `database` still `not_connected`.
+
+Refusals, each exit 1:
+
+- `DATABASE_URL=postgres://perkly_migrate:secret@203.0.113.20:5432/perkly npm run db:seed:local` — `Refused: host "203.0.113.20" is not loopback.`
+- Reset of database `perkly` — `Refused: reset-test may only use perkly_test.`
+- `APP_MODE=production npm run db:reset:test` — `Refused: APP_MODE is hosted.`
+- `test:integration` pointed at `perkly` — `Refused: test may only use perkly_test.`
+- Staging `AUTH_PROVIDER=local` on `start:api` — `Refused: hosted mode rejects demo identity.` The process did not listen.
+- Production `SEARCH_PROVIDER=fixtures` on `start:worker` — `Refused: hosted mode rejects demo search.`
+- Staging `PAYMENT_PROVIDER=simulator` on `start:api` — `Refused: hosted mode rejects simulator payments.`
+
+`npm run test:integration` passed 2 tests: fresh `perkly_test` migration of both files, and idempotent seed on `perkly` with runtime SQLSTATE 42501 on a profile insert.
+
+`npm run check` passed: typecheck, lint, Prettier, and 22 unit tests. The unit tests also start a valid hosted adapter set without AWS credentials and reject demo adapters before listen.
+
+### Unresolved
+
+- O-03 stays open.
+- The API still does not connect to PostgreSQL. There is no session login. That is P02-01, after P01-05.
+- Cognito, SES, S3, and Bedrock are accepted names in hosted configuration only. No AWS call is made. No model ID is chosen.
+- Membership billing is not started. Payment stays `disabled`.
+- AT01–AT34 were not run. `test:e2e` is not implemented. The app is not production-ready.
+- E01–E09 stay pending. D-22 is unchanged.
+
+### Next
+
+P01-04. Acceptance: CI, a native-database smoke test, a browser smoke test, a production build, and a non-root container run. P01-05 remains unblocked.

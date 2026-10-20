@@ -3,8 +3,8 @@
   "projectOrigin": "empty_repository",
   "updatedAt": "2026-10-20",
   "releaseState": "local",
-  "nextUnblockedTask": "P01-03",
-  "note": "P01-01 and P01-02 are done. Local Compose uses the postgres:17 image as a proposal and reported PostgreSQL 17.11. O-03 stays open for the RDS check. The API still does not open a database connection. D-22 still holds: Perkly does not charge a merchant product sale. No checkout and no PayPlus client were added. Membership billing is not in this build. Phase 05 merchant-sale tasks stay deferred_by_owner. P06-02 stays blocked_external on the membership-only E01. P01-05 is also unblocked. The next task in the phase list is P01-03.",
+  "nextUnblockedTask": "P01-04",
+  "note": "P01-01, P01-02, and P01-03 are done. Local mode selects fictional profiles, the email outbox, and search fixtures without AWS. Hosted mode rejects those demo adapters and simulator payments. Payment stays disabled. D-22 still holds: Perkly does not charge a merchant product sale. No checkout and no PayPlus client were added. Membership billing is not in this build. Phase 05 merchant-sale tasks stay deferred_by_owner. P06-02 stays blocked_external on the membership-only E01. O-03 stays open. P01-05 remains unblocked. The next phase-list task is P01-04.",
   "tasks": [
     {
       "id": "P00-01",
@@ -92,18 +92,22 @@
         "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-02. O-03 stays open."
       ],
       "blocker": null,
-      "nextAction": "None. The disposable database migrates. The next phase-list task is P01-03."
+      "nextAction": "None. The disposable database migrates."
     },
     {
       "id": "P01-03",
-      "status": "not_started",
+      "status": "done",
       "dependsOn": [
         "P01-02"
       ],
       "owner": "bot",
-      "evidence": [],
+      "evidence": [
+        "Local startup selects local-fixtures, outbox, and fixtures with payment disabled. No AWS credentials are required.",
+        "Hosted startup rejects demo identity, the outbox, fixture search, and simulator payments. Seed wrote 5 profiles, 1 outbox row, and 3 search fixtures on loopback perkly, and a second run did not duplicate them.",
+        "docs/IMPLEMENTATION_LOG.md entry dated 2026-10-20 for P01-03."
+      ],
       "blocker": null,
-      "nextAction": "Validate environment and adapter selection. Local mode works without AWS. Hosted mode rejects demo identity, simulator payments, and demo search."
+      "nextAction": "None. The next phase-list task is P01-04."
     },
     {
       "id": "P01-04",

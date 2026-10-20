@@ -76,10 +76,6 @@ export async function resetTestDatabase(url = databaseUrlFromEnv("reset-test")):
   });
 }
 
-export function seedLocal(url = databaseUrlFromEnv("seed-local")): void {
-  assertSafeDatabaseTarget(url, "seed-local");
-}
-
 export function createPool(role: "migrate" | "runtime", target: SafeDatabaseTarget): pg.Pool {
   const credentials = localRoles[role];
   return new pg.Pool({

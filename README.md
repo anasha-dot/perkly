@@ -67,7 +67,7 @@ npm run test:integration
 
 `db:reset:test` drops and recreates only `perkly_test`. `test:integration` does the same, then migrates it. Both refuse a hosted host, `APP_MODE=staging` or `production`, and any database name other than `perkly_test`.
 
-`db:seed:local` accepts only the loopback dev database and writes nothing. Fictional seed is the next task. `test:e2e` is not implemented.
+`db:seed:local` accepts only the loopback dev database. It writes fictional profiles, search fixtures, and one outbox row, and it does not send mail. A second run does not duplicate those rows. `test:e2e` is not implemented.
 
 Local passwords are in `infra/docker-compose.yml` and `packages/database/src/local.ts`. They are not for a hosted database.
 
@@ -94,4 +94,4 @@ Shell wording in Hebrew and Arabic has not had native-speaker review.
 
 ## Next task
 
-P01-03. Validate the environment, select adapters, and add the local fictional seed. P01-05 can also start. Do not add checkout or a merchant payment.
+P01-04. Add CI, smoke tests, a browser smoke test, and a non-root container check. P01-05 can also start. Do not add checkout or a merchant payment.

@@ -11,6 +11,8 @@
     "typecheck": "tsc -p tsconfig.json --pretty false"
   },
   "dependencies": {
+    "@perkly/integrations": "0.0.0",
+    "@perkly/search": "0.0.0",
     "pg": "8.23.1"
   },
   "devDependencies": {

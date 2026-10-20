@@ -30,13 +30,13 @@ Local development must run without an AWS account: native PostgreSQL, a loopback
 | `packages/integrations/` | Adapters for payment, identity, email, object storage, and search/AI | Scaffold. No provider client. |
 | `packages/search/` | Intent schema, fact matching, straight-line distance, evaluation fixtures | Scaffold. No search. |
 | `infra/` | CDK stacks and environment context, when E03 authorizes them | Local Compose only. No CDK stack. |
-| `scripts/` | Setup, migrate, seed, check, and release tooling | `db:migrate` and `db:reset:test` run against loopback. Seed writes nothing yet. |
+| `scripts/` | Setup, migrate, seed, check, and release tooling | `db:migrate` and `db:reset:test` run against loopback. Seed writes fictional local rows only. |
 | `tests/` | Unit, integration, concurrency, contract, and browser tests | Locale unit tests, target guards, and one disposable-database migration test. |
 | `docs/` | This design set, task tracking, and future evidence | Phase 00 files, with P01-01 and P01-02 status recorded. |
 
 In local development the web server proxies API calls so the browser sees one origin. In hosting, the compiled Vue app and the API are served from the same HTTPS origin. That keeps session cookies, callbacks, and CSRF on one site. CloudFront is for merchant images, not for sitting in front of the authenticated application, in the initial design.
 
-Root scripts exist. `db:migrate` applies numbered SQL on loopback database `perkly` or `perkly_test`. `db:reset:test` and `test:integration` accept only loopback `perkly_test`. `db:seed:local` accepts only loopback `perkly` and writes no rows yet. All of those commands refuse a hosted host, a hosted `APP_MODE`, and any other database name. `test:e2e` is still not implemented.
+Root scripts exist. `db:migrate` applies numbered SQL on loopback database `perkly` or `perkly_test`. `db:reset:test` and `test:integration` accept only loopback `perkly_test`. `db:seed:local` accepts only loopback `perkly` and writes fictional profiles, search fixtures, and one unsent outbox row. All of those commands refuse a hosted host, a hosted `APP_MODE`, and any other database name. `test:e2e` is still not implemented.
 
 ### Local database roles
 
@@ -306,4 +306,4 @@ Secrets stay out of source, CDK context, browser assets, and logs. No secret exi
 
 ## 9. What this design does not include
 
-`0001_foundation` is the only applied migration. `npm run dev` still does not open a database connection. No AWS account is connected. No membership adapter can be written until E01 supplies approved documentation. Merchant settlement through Perkly is withdrawn (D-22). PostgreSQL 17 is the local image proposal, not a selected RDS major (O-03).
+`0001_foundation` and `0002_local_fixtures` are the applied migrations. The API validates adapters at startup and still does not open a database connection. Local mode needs no AWS account. No membership adapter can be written until E01 supplies approved documentation. Merchant settlement through Perkly is withdrawn (D-22). PostgreSQL 17 is the local image proposal, not a selected RDS major (O-03).

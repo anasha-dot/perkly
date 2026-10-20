@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "@perkly/integrations": "0.0.0"
+  },
   "scripts": {
     "dev": "node --watch src/main.ts",
     "start": "node src/main.ts",

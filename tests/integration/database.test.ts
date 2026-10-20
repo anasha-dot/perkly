@@ -4,8 +4,10 @@ import {
   assertSafeDatabaseTarget,
   createPool,
   databaseUrlFromEnv,
+  localRoleUrl,
   migrate,
   resetTestDatabase,
+  seedLocal,
   withTransaction,
 } from "@perkly/database";
 
@@ -19,18 +21,18 @@ test(
     await resetTestDatabase(url);
     const first = await migrate(url);
     assert.equal(first.database, "perkly_test");
-    assert.deepEqual(first.applied, ["0001_foundation"]);
+    assert.deepEqual(first.applied, ["0001_foundation", "0002_local_fixtures"]);
     assert.match(first.serverVersion, /PostgreSQL 17\./);
     const firstSnapshot = await readSnapshot(target);
 
     const second = await migrate(url);
     assert.deepEqual(second.applied, []);
-    assert.deepEqual(second.alreadyApplied, ["0001_foundation"]);
+    assert.deepEqual(second.alreadyApplied, ["0001_foundation", "0002_local_fixtures"]);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
 
     await resetTestDatabase(url);
     const third = await migrate(url);
-    assert.deepEqual(third.applied, ["0001_foundation"]);
+    assert.deepEqual(third.applied, ["0001_foundation", "0002_local_fixtures"]);
     assert.equal(third.serverVersion, first.serverVersion);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
 
@@ -77,6 +79,50 @@ test(
       await expectSqlState(
         runtimePool.query(
           "INSERT INTO perkly_meta.schema_migrations (id, checksum) VALUES ('x', 'y')",
+        ),
+        "42501",
+      );
+    } finally {
+      await runtimePool.end();
+      await migratePool.end();
+    }
+  },
+);
+
+test(
+  "local seed is idempotent and the runtime role cannot write fixtures",
+  { timeout: 60_000 },
+  async () => {
+    const url = localRoleUrl("migrate", "perkly");
+    await migrate(url);
+    const first = await seedLocal(url);
+    const second = await seedLocal(url);
+    assert.equal(first.database, "perkly");
+    assert.equal(first.profiles, 5);
+    assert.equal(first.outbox, 1);
+    assert.equal(first.searchFixtures, 3);
+    assert.deepEqual(second, first);
+
+    const target = assertSafeDatabaseTarget(url, "seed-local");
+    const migratePool = createPool("migrate", target);
+    const runtimePool = createPool("runtime", target);
+    try {
+      const outbox = await migratePool.query<{ body: string }>(
+        "SELECT body FROM app.email_outbox WHERE id = $1",
+        ["fixture-outbox-seed"],
+      );
+      assert.match(outbox.rows[0]?.body ?? "", /was not sent/);
+      const columns = await migratePool.query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = 'app' AND table_name = 'fixture_profiles'`,
+      );
+      assert.equal(
+        columns.rows.some((row) => row.column_name === "password"),
+        false,
+      );
+      await expectSqlState(
+        runtimePool.query(
+          "INSERT INTO app.fixture_profiles (id, display_name, locale, profile_role, email) VALUES ('x', 'X', 'en', 'customer', 'x@example.com')",
         ),
         "42501",
       );

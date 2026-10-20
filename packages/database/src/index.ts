@@ -1,11 +1,7 @@
-export {
-  createPool,
-  migrate,
-  readMigrationFiles,
-  resetTestDatabase,
-  seedLocal,
-} from "./migrate.ts";
+export { createPool, migrate, readMigrationFiles, resetTestDatabase } from "./migrate.ts";
 export type { MigrateResult, MigrationFile } from "./migrate.ts";
+export { seedLocal } from "./seed.ts";
+export type { SeedResult } from "./seed.ts";
 export { splitSqlStatements } from "./sql.ts";
 export {
   assertSafeDatabaseTarget,

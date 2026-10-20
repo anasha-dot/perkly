@@ -1,6 +1,6 @@
 # Perkly product specification
 
-**Status:** Product contract. P01-01 added a local shell. P01-02 added local PostgreSQL from the `postgres:17` image as a proposal. O-03 is open. No payment integration exists.
+**Status:** Product contract. The local shell and PostgreSQL proposal exist. P01-03 selects local adapters without AWS and rejects them in hosted mode. O-03 is open. No payment integration exists.
 **Source:** `Perkly_From_Scratch_Roadmap.md` version 1.0, 20 October 2026. This file records the product contract. It does not replace the roadmap.
 **Owner:** Anas Hallumi. Recorded 20 October 2026.
 **Related:** `DECISIONS.md` D-22, `PAYMENT_CONTRACT.md`, `ARCHITECTURE.md`, `API.md`.

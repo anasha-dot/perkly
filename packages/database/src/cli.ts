@@ -1,4 +1,5 @@
-import { migrate, resetTestDatabase, seedLocal, type MigrateResult } from "./migrate.ts";
+import { migrate, resetTestDatabase, type MigrateResult } from "./migrate.ts";
+import { seedLocal } from "./seed.ts";
 import { UnsafeDatabaseTargetError } from "./target.ts";
 
 const command = process.argv[2];
@@ -12,10 +13,12 @@ try {
       "Reset the disposable test database perkly_test. It is empty until db:migrate runs.",
     );
   } else if (command === "seed-local") {
-    seedLocal();
-    console.log(
-      "Accepted the local dev database perkly. No seed rows exist in this task. Nothing was written. Fictional seed is P01-03.",
-    );
+    const seeded = await seedLocal();
+    console.log(`database: ${seeded.database}`);
+    console.log(`profiles: ${seeded.profiles}`);
+    console.log(`outbox: ${seeded.outbox}`);
+    console.log(`search_fixtures: ${seeded.searchFixtures}`);
+    console.log("Fictional rows are local only. The outbox message was not sent.");
   } else {
     console.error("Usage: cli.ts migrate | reset-test | seed-local");
     process.exit(1);
