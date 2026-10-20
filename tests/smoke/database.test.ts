@@ -17,6 +17,7 @@ test("native postgres smoke migrates the disposable database", { timeout: 60_000
   assert.match(migrated.serverVersion, /PostgreSQL 17\./);
   assert.ok(migrated.applied.includes("0001_foundation"));
   assert.ok(migrated.applied.includes("0002_local_fixtures"));
+  assert.ok(migrated.applied.includes("0003_audit_events"));
 
   const pool = createPool("runtime", target);
   try {

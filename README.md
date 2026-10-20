@@ -27,7 +27,7 @@ Open http://127.0.0.1:5173.
 
 The first screen is English, Hebrew, and Arabic. Hebrew and Arabic lay out right to left. The language buttons are English, עברית, and العربية. The choice is a display preference in this browser. It is not an account, a membership, or a role.
 
-The web server proxies `/api` to the API on http://127.0.0.1:3001. `GET /api/v1` answers with the service name and `database: "not_connected"`.
+The web server proxies `/api` to the API on http://127.0.0.1:3001. `GET /api/v1` answers with the service name and `database: "not_connected"`. `GET /api/v1/health` and `GET /api/v1/ready` report process status and do not include secrets. Unknown API paths return `code`, `requestId`, and `fieldErrors`. Logs are JSON and redact connection URLs.
 
 These commands also start the processes:
 
@@ -102,4 +102,4 @@ Shell wording in Hebrew and Arabic has not had native-speaker review.
 
 ## Next task
 
-P01-05. Add redacted logs, request IDs, the error schema, health and shutdown, and the append-only audit grants. Do not add checkout or a merchant payment.
+P02-01. Add users, hashed server sessions, and the loopback-only fictional identity adapter. Do not add checkout or a merchant payment.

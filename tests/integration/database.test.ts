@@ -21,18 +21,30 @@ test(
     await resetTestDatabase(url);
     const first = await migrate(url);
     assert.equal(first.database, "perkly_test");
-    assert.deepEqual(first.applied, ["0001_foundation", "0002_local_fixtures"]);
+    assert.deepEqual(first.applied, [
+      "0001_foundation",
+      "0002_local_fixtures",
+      "0003_audit_events",
+    ]);
     assert.match(first.serverVersion, /PostgreSQL 17\./);
     const firstSnapshot = await readSnapshot(target);
 
     const second = await migrate(url);
     assert.deepEqual(second.applied, []);
-    assert.deepEqual(second.alreadyApplied, ["0001_foundation", "0002_local_fixtures"]);
+    assert.deepEqual(second.alreadyApplied, [
+      "0001_foundation",
+      "0002_local_fixtures",
+      "0003_audit_events",
+    ]);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
 
     await resetTestDatabase(url);
     const third = await migrate(url);
-    assert.deepEqual(third.applied, ["0001_foundation", "0002_local_fixtures"]);
+    assert.deepEqual(third.applied, [
+      "0001_foundation",
+      "0002_local_fixtures",
+      "0003_audit_events",
+    ]);
     assert.equal(third.serverVersion, first.serverVersion);
     assert.deepEqual(await readSnapshot(target), firstSnapshot);
 
@@ -82,6 +94,38 @@ test(
         ),
         "42501",
       );
+
+      const inserted = await runtimePool.query<{ id: string; action: string }>(
+        `INSERT INTO app.audit_events (actor, action, subject, request_id)
+         VALUES ('fixture-system', 'foundation.ready', 'app.schema_info', 'req_audit_test')
+         RETURNING id::text AS id, action`,
+      );
+      const auditId = inserted.rows[0]?.id;
+      assert.equal(inserted.rows[0]?.action, "foundation.ready");
+      await expectSqlState(
+        runtimePool.query("UPDATE app.audit_events SET action = 'changed' WHERE id = $1", [
+          auditId,
+        ]),
+        "42501",
+      );
+      await expectSqlState(
+        runtimePool.query("DELETE FROM app.audit_events WHERE id = $1", [auditId]),
+        "42501",
+      );
+      await expectSqlState(runtimePool.query("TRUNCATE app.audit_events"), "42501");
+      await expectSqlState(
+        runtimePool.query("ALTER TABLE app.audit_events ADD COLUMN leaked text"),
+        "42501",
+      );
+      await expectSqlState(
+        migratePool.query("UPDATE app.audit_events SET action = 'changed'"),
+        "42501",
+      );
+      const unchanged = await runtimePool.query<{ action: string }>(
+        "SELECT action FROM app.audit_events WHERE id = $1",
+        [auditId],
+      );
+      assert.equal(unchanged.rows[0]?.action, "foundation.ready");
     } finally {
       await runtimePool.end();
       await migratePool.end();

@@ -1,21 +1,46 @@
-import { EnvironmentConfigError, loadConfig } from "@perkly/integrations";
-import { createApp } from "./app.ts";
+import { EnvironmentConfigError, createLogger, loadConfig } from "@perkly/integrations";
+import { createApp, setShuttingDown } from "./app.ts";
+import { closeHttpServer } from "./shutdown.ts";
 
+const log = createLogger("perkly-api");
 const config = loadStartupConfig();
-const server = createApp(config).listen(config.port, config.host, () => {
-  console.log(
-    `perkly-api listening on http://${config.host}:${config.port} mode=${config.mode} identity=${config.adapters.identity} email=${config.adapters.email} search=${config.adapters.search} payment=${config.adapters.payment}`,
-  );
-});
+const databaseUrl = readDatabaseUrl();
+let stopping = false;
 
-function shutdown(): void {
-  server.close(() => {
-    process.exit(0);
-  });
+const server = createApp(config, databaseUrl === undefined ? {} : { databaseUrl }).listen(
+  config.port,
+  config.host,
+  () => {
+    log.info("listening", {
+      host: config.host,
+      port: config.port,
+      mode: config.mode,
+      identity: config.adapters.identity,
+      email: config.adapters.email,
+      search: config.adapters.search,
+      payment: config.adapters.payment,
+    });
+  },
+);
+
+async function shutdown(signal: string): Promise<void> {
+  if (stopping) {
+    process.exit(1);
+  }
+  stopping = true;
+  setShuttingDown(true);
+  log.info("shutdown_started", { signal });
+  await closeHttpServer(server);
+  log.info("shutdown_complete", { signal });
+  process.exit(0);
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT", () => {
+  void shutdown("SIGINT");
+});
+process.on("SIGTERM", () => {
+  void shutdown("SIGTERM");
+});
 
 function loadStartupConfig() {
   try {
@@ -27,4 +52,12 @@ function loadStartupConfig() {
     }
     throw error;
   }
+}
+
+function readDatabaseUrl(): string | undefined {
+  const value = process.env.DATABASE_URL;
+  if (value === undefined || value.trim() === "") {
+    return undefined;
+  }
+  return value.trim();
 }

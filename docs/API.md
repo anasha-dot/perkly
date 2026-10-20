@@ -14,6 +14,9 @@ This document describes Perkly's own application API. It does not describe a pay
 | Method and path | Contract |
 | --- | --- |
 | `GET /api/v1` | The process is up. The body includes `{ "name": "perkly", "apiVersion": "v1", "database": "not_connected" }` plus `mode` and the selected adapter names. `database` is not readiness and this is not a session. `payment` is `disabled`. No payment route exists. |
+| `GET /api/v1/health` | Liveness. `{ "status": "ok", "service": "perkly-api" }` while the process accepts traffic. No secrets. Shutdown returns 503 `not_ready`. |
+| `GET /api/v1/ready` | Readiness. Without `DATABASE_URL`, the database check is `not_configured`. With a local URL, it is `ok` or 503 `not_ready`. The body never includes the URL or a password. |
+| Unknown `/api/v1` path | 404 `{ "code": "not_found", "requestId", "fieldErrors": [] }`. The `x-request-id` response header matches the body. |
 
 A future `packages/contracts` module will own the implemented schemas and publish OpenAPI from them. Until those schemas exist, this markdown file is the contract and it remains proposed.
 

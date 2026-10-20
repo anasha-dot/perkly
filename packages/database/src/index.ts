@@ -10,4 +10,5 @@ export {
 } from "./target.ts";
 export type { DatabasePurpose, SafeDatabaseTarget } from "./target.ts";
 export { withTransaction } from "./transaction.ts";
+export { pingRuntimeDatabase } from "./readiness.ts";
 export { LOCAL_DEV_DATABASE, LOCAL_TEST_DATABASE, localRoleUrl } from "./local.ts";

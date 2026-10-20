@@ -5,5 +5,9 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [{ "path": "../../packages/contracts" }, { "path": "../../packages/integrations" }]
+  "references": [
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/database" },
+    { "path": "../../packages/integrations" }
+  ]
 }

@@ -41,6 +41,9 @@ export function resolveLocale(
   return "en";
 }
 
+export { errorBody } from "./errors.ts";
+export type { ErrorBody, FieldError } from "./errors.ts";
+
 export const serviceDescriptor = {
   name: "perkly",
   apiVersion: "v1",

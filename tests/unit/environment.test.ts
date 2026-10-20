@@ -63,8 +63,8 @@ test("local mode rejects a public listener and a hosted database", () => {
 
 test("the local api process starts without AWS settings", async () => {
   const output = await listenAndStop(["apps/api/src/main.ts"], localEnv({ PORT: "34567" }));
-  assert.match(output, /identity=local-fixtures/);
-  assert.match(output, /payment=disabled/);
+  assert.match(output, /"identity":"local-fixtures"/);
+  assert.match(output, /"payment":"disabled"/);
 });
 
 test("a hosted api process with a valid adapter set starts without AWS credentials", async () => {
@@ -79,8 +79,8 @@ test("a hosted api process with a valid adapter set starts without AWS credentia
       PORT: "34568",
     }),
   );
-  assert.match(output, /identity=cognito/);
-  assert.match(output, /search=bedrock/);
+  assert.match(output, /"identity":"cognito"/);
+  assert.match(output, /"search":"bedrock"/);
   assert.doesNotMatch(output, /amazonaws/);
 });
 

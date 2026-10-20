@@ -351,3 +351,54 @@ Exit 0. The process was not root.
 ### Next
 
 P01-05. Acceptance: redacted logs, request IDs, the error schema, health and shutdown, an append-only audit table, and runtime grants that cannot change schema or prior audit rows.
+
+## 2026-10-20 — P01-05 health, logs, and audit grants
+
+**Scope:** Structured redacted logs, request IDs, the error schema, process health and readiness, graceful shutdown, and migration `0003_audit_events`. No PayPlus client, checkout, merchant payment, or membership billing. `Perkly_From_Scratch_Roadmap.md` was not rewritten.
+
+**Observable result:** `GET /api/v1/health` returns `{ "status": "ok", "service": "perkly-api" }` and no database URL. Without `DATABASE_URL`, readiness says the database is `not_configured`. With the local runtime URL, readiness says the database is `ok` and still omits the URL. Unknown paths return `code`, `requestId`, and `fieldErrors`, and the response header repeats the request id. Logs are one JSON object per line and replace postgres URLs and password fields with `[redacted]`. SIGTERM logs `shutdown_started` then `shutdown_complete`. The runtime role can insert an audit event and cannot update, delete, truncate, or alter it. The migration role cannot update a prior audit row either. The original action stays `foundation.ready`.
+
+### Commands and results
+
+Node.js 24.22.0. Local PostgreSQL was already healthy.
+
+```text
+npm run test:unit
+npm run test:smoke:database
+npm run test:integration
+npm run test:e2e
+npm run check
+```
+
+`test:unit` passed 25 tests, including redaction and health responses. `test:smoke:database` passed and applied `0003_audit_events`. `test:integration` passed 2 tests. The migration test rejected runtime and migration `UPDATE`, runtime `DELETE`, `TRUNCATE`, and `ALTER` with SQLSTATE 42501, then read the original action `foundation.ready`. `test:e2e` passed. `npm run check` passed: typecheck, lint, Prettier, and the same 25 unit tests.
+
+```text
+PORT=34574 npm run start:api
+```
+
+- `GET /api/v1/health` → `{"status":"ok","service":"perkly-api"}`
+- `GET /api/v1/ready` → `{"status":"ready","checks":{"process":"ok","database":"not_configured"}}`
+- `GET /api/v1/missing` → 404 `{"code":"not_found","requestId":"req_a840d7ee194bfb2ddd5009e5","fieldErrors":[]}` with the same `x-request-id`
+
+```text
+DATABASE_URL=postgres://perkly_runtime:perkly_local_runtime@127.0.0.1:5432/perkly PORT=34575 npm run start:api
+```
+
+`GET /api/v1/ready` → `{"status":"ready","checks":{"process":"ok","database":"ok"}}`. The body did not include the URL.
+
+```text
+PORT=34576 node apps/api/src/main.ts
+kill -TERM <pid>
+```
+
+The log contained `shutdown_started` and `shutdown_complete` for `SIGTERM`.
+
+### Unresolved
+
+- O-03 stays open. There is still no session login. That is P02-01.
+- AT01–AT34 were not run. The app is not production-ready.
+- E01–E09 stay pending. D-22 is unchanged. No merchant payment was added.
+
+### Next
+
+P02-01. Acceptance: hashed server sessions and the loopback-only fictional identity adapter, with a local customer session and a local staff session.

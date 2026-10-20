@@ -44,7 +44,7 @@ Root scripts exist. `db:migrate` applies numbered SQL on loopback database `perk
 | --- | --- | --- |
 | `perkly_bootstrap` | Compose superuser. Creates the two databases and the other two roles. | Not an application role. Not used by the API or worker. Hosted bootstrap is a later task. |
 | `perkly_migrate` | Owns `perkly` and `perkly_test`. Applies numbered migrations and writes `perkly_meta.schema_migrations`. | Not a superuser. No createdb and no createrole. |
-| `perkly_runtime` | Connects and reads what a migration grants. Today that is `SELECT` on `app.schema_info`. | No DDL, no write to `schema_info`, and no access to `perkly_meta`. The audit-table grants are P01-05. |
+| `perkly_runtime` | Connects, reads granted tables, and inserts new audit events. | No DDL. No update, delete, or truncate of `app.audit_events`. No access to `perkly_meta`. |
 
 Local passwords are non-production and are valid only on loopback. PostgreSQL 17 is the Compose image proposal. O-03 stays open.
 
@@ -306,4 +306,4 @@ Secrets stay out of source, CDK context, browser assets, and logs. No secret exi
 
 ## 9. What this design does not include
 
-`0001_foundation` and `0002_local_fixtures` are the applied migrations. The API validates adapters at startup and still does not open a database connection. Local mode needs no AWS account. No membership adapter can be written until E01 supplies approved documentation. Merchant settlement through Perkly is withdrawn (D-22). PostgreSQL 17 is the local image proposal, not a selected RDS major (O-03).
+`0001_foundation`, `0002_local_fixtures`, and `0003_audit_events` are the applied migrations. Readiness checks the local database only when `DATABASE_URL` is set, and the response does not include that URL. Local mode needs no AWS account. No membership adapter can be written until E01 supplies approved documentation. Merchant settlement through Perkly is withdrawn (D-22). PostgreSQL 17 is the local image proposal, not a selected RDS major (O-03).

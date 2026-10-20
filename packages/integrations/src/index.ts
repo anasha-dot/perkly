@@ -8,6 +8,9 @@ export {
 } from "./environment.ts";
 export type { AdapterSelection, AppConfig, AppMode, PublicConfigSummary } from "./environment.ts";
 
+export { clientErrorLog, createLogger, redact } from "./log.ts";
+export type { LogFields, LogLevel } from "./log.ts";
+
 export const merchantPayment = "outside_perkly" as const;
 
 export const membershipBilling = "not_in_this_build" as const;
